@@ -2,7 +2,23 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import AppHead from "@/components/AppHead";
 import GameCarousel from "@/components/GameCarousel";
 import GameDetails from "@/components/GameDetails";
-import useAudioManager from "@/components/AudioManager";
+import useAudioManager from "@/components/useAudioManager";
+
+// Cookie utility functions
+const getCookie = (name) => {
+  if (typeof document === "undefined") return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+  return null;
+};
+
+const setCookie = (name, value, days = 365) => {
+  if (typeof document === "undefined") return;
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+};
 
 export function MovingBackground() {
   const ICON_SIZE = 64;
@@ -166,27 +182,12 @@ export function MovingBackground() {
   );
 }
 
-function ProfileModal({
-  isOpen,
-  onClose,
-  slackProfile,
-  onLogout,
-  initialProfile,
-  token,
-  onUpdated,
-}) {
+function EventsModal({ isOpen, onClose, token }) {
   const [shouldRender, setShouldRender] = useState(Boolean(isOpen));
   const [isExiting, setIsExiting] = useState(false);
-  const [githubUsername, setGithubUsername] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [birthday, setBirthday] = useState("");
-  const [street1, setStreet1] = useState("");
-  const [street2, setStreet2] = useState("");
-  const [city, setCity] = useState("");
-  const [zipcode, setZipcode] = useState("");
-  const [country, setCountry] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [userRSVPs, setUserRSVPs] = useState([]);
+  const [isRSVPing, setIsRSVPing] = useState(false);
+  const [rsvpMessage, setRsvpMessage] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -214,49 +215,75 @@ function ProfileModal({
     }
   }, [isOpen, shouldRender]);
 
+  // Fetch user's RSVPs when modal opens
   useEffect(() => {
-    if (!isOpen) return;
-    const p = initialProfile || {};
-    setGithubUsername(p.githubUsername || "");
-    setFirstName(p.firstName || "");
-    setLastName(p.lastName || "");
-    setBirthday(p.birthday || "");
-    setStreet1((p.address && p.address.street1) || "");
-    setStreet2((p.address && p.address.street2) || "");
-    setCity((p.address && p.address.city) || "");
-    setZipcode((p.address && p.address.zipcode) || "");
-    setCountry((p.address && p.address.country) || "");
-    setSaving(false);
-  }, [isOpen, initialProfile]);
+    if (!isOpen || !token) return;
 
-  const hasChanges = useMemo(() => {
-    return Boolean(
-      githubUsername ||
-        firstName ||
-        lastName ||
-        birthday ||
-        street1 ||
-        street2 ||
-        city ||
-        zipcode ||
-        country,
-    );
-  }, [
-    githubUsername,
-    firstName,
-    lastName,
-    birthday,
-    street1,
-    street2,
-    city,
-    zipcode,
-    country,
-  ]);
+    const fetchRSVPs = async () => {
+      try {
+        const res = await fetch("/api/GetRSVPs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.ok) {
+          setUserRSVPs(data.rsvps || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch RSVPs:", error);
+      }
+    };
+
+    fetchRSVPs();
+  }, [isOpen, token]);
+
+  const hasRSVPedForShibaDirect = userRSVPs.some(
+    (rsvp) => rsvp.event === "Shiba-Direct",
+  );
+
+  const handleRSVP = async () => {
+    if (!token || isRSVPing) return;
+
+    setIsRSVPing(true);
+    setRsvpMessage("");
+
+    try {
+      const res = await fetch("/api/CreateRSVP", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, event: "Shiba-Direct" }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data?.ok) {
+        setRsvpMessage(
+          "RSVP successful! You'll receive an email 30 minutes before the event.",
+        );
+        // Refresh RSVPs
+        const rsvpRes = await fetch("/api/GetRSVPs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const rsvpData = await rsvpRes.json().catch(() => ({}));
+        if (rsvpRes.ok && rsvpData?.ok) {
+          setUserRSVPs(rsvpData.rsvps || []);
+        }
+      } else if (res.status === 409) {
+        setRsvpMessage("You've already RSVPed for this event!");
+      } else {
+        setRsvpMessage(data?.message || "Failed to RSVP");
+      }
+    } catch (error) {
+      console.error("RSVP error:", error);
+      setRsvpMessage("Failed to RSVP");
+    } finally {
+      setIsRSVPing(false);
+    }
+  };
 
   if (!shouldRender) return null;
-
-  const displayName = slackProfile?.displayName || "";
-  const image = slackProfile?.image || "";
 
   return (
     <div
@@ -299,9 +326,337 @@ function ProfileModal({
             justifyContent: "space-between",
           }}
         >
-          <p style={{ margin: 0, fontWeight: 600 }}>Profile</p>
+          <p style={{ margin: 0, fontWeight: 600 }}>Upcoming Events</p>
           <button
             onClick={onClose}
+            className="icon-btn"
+            aria-label="Close"
+            title="Close"
+            style={{
+              appearance: "none",
+              border: "1px solid rgba(0,0,0,0.12)",
+              background: "rgba(255,255,255,0.7)",
+              width: 32,
+              height: 32,
+              borderRadius: 9999,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "rgba(0,0,0,0.65)",
+              fontSize: 18,
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              border: "4px solid #FF2200",
+              borderRadius: "8px",
+              background: "linear-gradient(to bottom, #ffb7b5, #ed7874)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              gap: "8px",
+              padding: "16px",
+              width: "100%",
+            }}
+          >
+            <img
+              src="/landing/shiba_direct.png"
+              style={{ width: "80%", marginBottom: "8px" }}
+            />
+            <p style={{ margin: 0, fontSize: "14px" }}>
+              22 august · 4:30pm – 5:30pm PST
+            </p>
+            <p style={{ margin: 0, fontSize: "14px" }}>
+              our kickoff event where we'll release features & many surpises
+            </p>
+            {hasRSVPedForShibaDirect ? (
+              <div
+                style={{
+                  background: "rgba(255, 255, 255, 0.8)",
+                  border: "2px dotted #006600",
+                  borderRadius: "8px",
+                  padding: "12px",
+                  margin: "8px 0",
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "14px",
+                    fontWeight: "bold",
+                    color: "#006600",
+                  }}
+                >
+                  You're RSVPed, you'll automatically receive an email with the
+                  zoom link 30 minutes before.
+                </p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleRSVP}
+                  disabled={isRSVPing}
+                  style={{
+                    appearance: "none",
+                    border: "2px solid #FF2200",
+                    background: "#ffffff",
+                    color: "#FF2200",
+                    borderRadius: 10,
+                    padding: "10px 14px",
+                    cursor: isRSVPing ? "not-allowed" : "pointer",
+                    fontWeight: 800,
+                    fontSize: "14px",
+                    opacity: isRSVPing ? 0.8 : 1,
+                    transition:
+                      "opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isRSVPing) {
+                      e.target.style.background = "#FF2200";
+                      e.target.style.color = "#ffffff";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isRSVPing) {
+                      e.target.style.background = "#ffffff";
+                      e.target.style.color = "#FF2200";
+                    }
+                  }}
+                >
+                  {isRSVPing ? "RSVPing..." : "RSVP"}
+                </button>
+              </>
+            )}
+          </div>
+
+          <p style={{ margin: 0, fontSize: "14px", opacity: 0.7 }}>
+            More events to be announced soon
+          </p>
+        </div>
+      </div>
+      <style jsx>{`
+        .modal-overlay {
+          background-color: rgba(255, 255, 255, 0);
+          backdrop-filter: blur(0px);
+          -webkit-backdrop-filter: blur(0px);
+          transition:
+            backdrop-filter 240ms ease,
+            -webkit-backdrop-filter 240ms ease,
+            background-color 240ms ease;
+        }
+        .modal-overlay.enter {
+          background-color: rgba(255, 255, 255, 0.3);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+        }
+        .modal-overlay.exit {
+          background-color: rgba(255, 255, 255, 0);
+          backdrop-filter: blur(0px);
+          -webkit-backdrop-filter: blur(0px);
+        }
+        .modal-card {
+          transform: translateY(6px) scale(0.98);
+          opacity: 0;
+          transition:
+            transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+            opacity 220ms ease;
+        }
+        .modal-card.enter {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+        .modal-card.exit {
+          transform: translateY(6px) scale(0.98);
+          opacity: 0;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function ProfileModal({
+  isOpen,
+  onClose,
+  slackProfile,
+  onLogout,
+  initialProfile,
+  token,
+  onUpdated,
+}) {
+  const [shouldRender, setShouldRender] = useState(Boolean(isOpen));
+  const [isExiting, setIsExiting] = useState(false);
+  const [githubUsername, setGithubUsername] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [street1, setStreet1] = useState("");
+  const [street2, setStreet2] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zipcode, setZipcode] = useState("");
+  const [country, setCountry] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose?.();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      requestAnimationFrame(() => setIsExiting(false));
+    } else if (shouldRender) {
+      setIsExiting(true);
+      const t = setTimeout(() => {
+        setShouldRender(false);
+        setIsExiting(false);
+      }, 260);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, shouldRender]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const p = initialProfile || {};
+    setGithubUsername(p.githubUsername || "");
+    setFirstName(p.firstName || "");
+    setLastName(p.lastName || "");
+    setBirthday(p.birthday || "");
+    setStreet1((p.address && p.address.street1) || "");
+    setStreet2((p.address && p.address.street2) || "");
+    setCity((p.address && p.address.city) || "");
+    setState((p.address && p.address.state) || "");
+    setZipcode((p.address && p.address.zipcode) || "");
+    setCountry((p.address && p.address.country) || "");
+    setSaving(false);
+  }, [isOpen, initialProfile]);
+
+  const hasChanges = useMemo(() => {
+    const p = initialProfile || {};
+    const initialGithubUsername = p.githubUsername || "";
+    const initialFirstName = p.firstName || "";
+    const initialLastName = p.lastName || "";
+    const initialBirthday = p.birthday || "";
+    const initialStreet1 = (p.address && p.address.street1) || "";
+    const initialStreet2 = (p.address && p.address.street2) || "";
+    const initialCity = (p.address && p.address.city) || "";
+    const initialState = (p.address && p.address.state) || "";
+    const initialZipcode = (p.address && p.address.zipcode) || "";
+    const initialCountry = (p.address && p.address.country) || "";
+
+    return (
+      githubUsername !== initialGithubUsername ||
+      firstName !== initialFirstName ||
+      lastName !== initialLastName ||
+      birthday !== initialBirthday ||
+      street1 !== initialStreet1 ||
+      street2 !== initialStreet2 ||
+      city !== initialCity ||
+      state !== initialState ||
+      zipcode !== initialZipcode ||
+      country !== initialCountry
+    );
+  }, [
+    githubUsername,
+    firstName,
+    lastName,
+    birthday,
+    street1,
+    street2,
+    city,
+    state,
+    zipcode,
+    country,
+    initialProfile,
+  ]);
+
+  const handleCloseAttempt = () => {
+    if (hasChanges) {
+      const confirmed = confirm(
+        "You haven't saved your changes. Tap update to save your changes",
+      );
+      if (confirmed) {
+        onClose?.();
+      }
+    } else {
+      onClose?.();
+    }
+  };
+
+  if (!shouldRender) return null;
+
+  const displayName = slackProfile?.displayName || "";
+  const image = slackProfile?.image || "";
+
+  return (
+    <div
+      className={`modal-overlay ${isExiting ? "exit" : "enter"}`}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 10000,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleCloseAttempt();
+      }}
+    >
+      <div
+        className={`modal-card ${isExiting ? "exit" : "enter"}`}
+        style={{
+          backgroundColor: "rgba(255, 255, 255, 0.92)",
+          padding: 20,
+          borderRadius: 12,
+          minWidth: 320,
+          maxWidth: 420,
+          width: "90%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          border: "1px solid rgba(0, 0, 0, 0.12)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <p style={{ margin: 0, fontWeight: 600 }}>Profile</p>
+          <button
+            onClick={handleCloseAttempt}
             className="icon-btn"
             aria-label="Close"
             title="Close"
@@ -434,7 +789,16 @@ function ProfileModal({
             marginTop: 8,
           }}
         >
-          <span style={{ fontSize: 12, opacity: 0.7 }}>GitHub</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>GitHub</span>
+            {!githubUsername && (
+              <span
+                style={{ fontSize: 10, color: "#FF0000", fontWeight: "bold" }}
+              >
+                (missing required field)
+              </span>
+            )}
+          </div>
           <input
             type="text"
             placeholder="GitHub Username"
@@ -448,7 +812,16 @@ function ProfileModal({
               outline: "none",
             }}
           />
-          <span style={{ fontSize: 12, opacity: 0.7 }}>Name</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>Name</span>
+            {(!firstName || !lastName) && (
+              <span
+                style={{ fontSize: 10, color: "#FF0000", fontWeight: "bold" }}
+              >
+                (missing required field)
+              </span>
+            )}
+          </div>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               type="text"
@@ -479,7 +852,16 @@ function ProfileModal({
               }}
             />
           </div>
-          <span style={{ fontSize: 12, opacity: 0.7 }}>Birthday</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>Birthday</span>
+            {!birthday && (
+              <span
+                style={{ fontSize: 10, color: "#FF0000", fontWeight: "bold" }}
+              >
+                (missing required field)
+              </span>
+            )}
+          </div>
           <input
             type="date"
             value={birthday}
@@ -501,7 +883,16 @@ function ProfileModal({
               marginTop: 4,
             }}
           >
-            <span style={{ fontSize: 12, opacity: 0.7 }}>Address</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, opacity: 0.7 }}>Address</span>
+              {(!street1 || !city || !state || !zipcode || !country) && (
+                <span
+                  style={{ fontSize: 10, color: "#FF0000", fontWeight: "bold" }}
+                >
+                  (missing required field)
+                </span>
+              )}
+            </div>
             <input
               type="text"
               placeholder="Street Address"
@@ -558,19 +949,36 @@ function ProfileModal({
                 }}
               />
             </div>
-            <input
-              type="text"
-              placeholder="Country"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              style={{
-                padding: 10,
-                borderRadius: 10,
-                border: "1px solid rgba(0,0,0,0.18)",
-                background: "rgba(255,255,255,0.8)",
-                outline: "none",
-              }}
-            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                placeholder="State / Province"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid rgba(0,0,0,0.18)",
+                  background: "rgba(255,255,255,0.8)",
+                  outline: "none",
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid rgba(0,0,0,0.18)",
+                  background: "rgba(255,255,255,0.8)",
+                  outline: "none",
+                }}
+              />
+            </div>
           </div>
         </div>
 
@@ -586,7 +994,14 @@ function ProfileModal({
                     firstName,
                     lastName,
                     birthday,
-                    address: { street1, street2, city, zipcode, country },
+                    address: {
+                      street1,
+                      street2,
+                      city,
+                      state,
+                      zipcode,
+                      country,
+                    },
                   };
                   const res = await fetch("/api/updateMyProfile", {
                     method: "POST",
@@ -719,6 +1134,7 @@ export default function HomeScreen({
   token,
   profile,
   setProfile,
+  autoOpenProfile,
 }) {
   // selectedGame is now controlled by the parent (index.js)
   const [tokyoTime, setTokyoTime] = useState("");
@@ -727,6 +1143,9 @@ export default function HomeScreen({
     image: "",
   });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isEventsOpen, setIsEventsOpen] = useState(false);
+  const [hasOpenedEventsNotification, setHasOpenedEventsNotification] =
+    useState(false);
 
   // Preload SFX and game clip audios for instant playback
   const sfxFiles = ["next.mp3", "prev.mp3", "shiba-bark.mp3"];
@@ -736,6 +1155,20 @@ export default function HomeScreen({
     playClip,
     stopAll,
   } = useAudioManager([...sfxFiles, ...clipFiles]);
+
+  // Check if user has opened events notification
+  useEffect(() => {
+    const hasOpened = getCookie("hasOpenedEventsNotification");
+    setHasOpenedEventsNotification(hasOpened === "true");
+  }, []);
+
+  // Set cookie when events modal is opened
+  useEffect(() => {
+    if (isEventsOpen && !hasOpenedEventsNotification) {
+      setCookie("hasOpenedEventsNotification", "true");
+      setHasOpenedEventsNotification(true);
+    }
+  }, [isEventsOpen, hasOpenedEventsNotification]);
 
   // When selected game changes, play its clip immediately using the preloaded element
   useEffect(() => {
@@ -788,6 +1221,13 @@ export default function HomeScreen({
     };
   }, [SlackId]);
 
+  // Auto-open profile modal if requested
+  useEffect(() => {
+    if (autoOpenProfile) {
+      setIsProfileOpen(true);
+    }
+  }, [autoOpenProfile]);
+
   return (
     <>
       <AppHead title="Shiba" />
@@ -832,20 +1272,74 @@ export default function HomeScreen({
               aspectRatio: 1,
               backgroundColor: "white",
               border: "1px solid rgba(0, 0, 0, 0.3)",
-              overflow: "hidden",
+              overflow: "visible",
               alignItems: "center",
               borderRadius: 8,
               justifyContent: "center",
               cursor: "pointer",
+              position: "relative",
             }}
           >
-            {slackProfile.image ? (
-              <img
-                src={slackProfile.image}
-                alt={slackProfile.displayName || "Slack Avatar"}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : null}
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: 8,
+                overflow: "hidden",
+              }}
+            >
+              {slackProfile.image ? (
+                <img
+                  src={slackProfile.image}
+                  alt={slackProfile.displayName || "Slack Avatar"}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : null}
+            </div>
+            {(() => {
+              if (!profile) return null;
+
+              const missingFields = [
+                !profile.firstName && "firstName",
+                !profile.lastName && "lastName",
+                !profile.email && "email",
+                !profile.githubUsername && "githubUsername",
+                !profile.birthday && "birthday",
+                !profile.slackId && "slackId",
+                !profile.address?.street1 && "street1",
+                !profile.address?.city && "city",
+                !profile.address?.zipcode && "zipcode",
+                !profile.address?.country && "country",
+              ].filter(Boolean);
+
+              const missingCount = missingFields.length;
+
+              if (missingCount === 0) return null;
+
+              return (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -2,
+                    width: 16,
+                    height: 16,
+                    backgroundColor: "#FF0000",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "white",
+                    fontSize: "10px",
+                    fontWeight: "bold",
+                    border: "1px solid white",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {missingCount > 9 ? "9+" : missingCount}
+                </div>
+              );
+            })()}
           </div>
           <p style={{ fontFamily: "GT Maru", fontWeight: "bold" }}>
             Shiba Arcade
@@ -896,6 +1390,7 @@ export default function HomeScreen({
           }}
         >
           <div
+            onClick={() => setIsEventsOpen(true)}
             style={{
               display: "flex",
               height: 48,
@@ -909,6 +1404,15 @@ export default function HomeScreen({
               boxSizing: "border-box",
               alignItems: "center",
               justifyContent: "center",
+              cursor: "pointer",
+              transition: "background-color 0.2s ease",
+              position: "relative",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = "rgba(255, 255, 255, 0.7)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
             }}
           >
             <img
@@ -921,6 +1425,29 @@ export default function HomeScreen({
                 objectFit: "contain",
               }}
             />
+            {!hasOpenedEventsNotification && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  width: 20,
+                  height: 20,
+                  backgroundColor: "#FF0000",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  border: "2px solid white",
+                  pointerEvents: "none",
+                }}
+              >
+                1
+              </div>
+            )}
           </div>
           <div
             style={{
@@ -965,6 +1492,11 @@ export default function HomeScreen({
           window.location.reload();
         }}
         onUpdated={(p) => setProfile?.(p)}
+      />
+      <EventsModal
+        isOpen={isEventsOpen}
+        onClose={() => setIsEventsOpen(false)}
+        token={token}
       />
     </>
   );

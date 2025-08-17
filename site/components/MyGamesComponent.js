@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import CreateGameModal from "@/components/CreateGameModal";
-import useAudioManager from "@/components/AudioManager";
+import useAudioManager from "@/components/useAudioManager";
 import TopBar from "@/components/TopBar";
 import { uploadGame as uploadGameUtil } from "@/components/utils/uploadGame";
 
@@ -114,6 +114,7 @@ export default function MyGamesComponent({
   goHome,
   token,
   SlackId,
+  onOpenProfile,
 }) {
   const [myGames, setMyGames] = useState([]);
   const [createGamePopupOpen, setCreateGamePopupOpen] = useState(false);
@@ -375,6 +376,7 @@ export default function MyGamesComponent({
                     );
                   }}
                   SlackId={SlackId}
+                  onOpenProfile={onOpenProfile}
                 />
               </div>
             </div>
@@ -587,7 +589,14 @@ export default function MyGamesComponent({
   );
 }
 
-function DetailView({ game, onBack, token, onUpdated, SlackId }) {
+function DetailView({
+  game,
+  onBack,
+  token,
+  onUpdated,
+  SlackId,
+  onOpenProfile,
+}) {
   const [name, setName] = useState(game?.name || "");
   const [description, setDescription] = useState(game?.description || "");
   const [thumbnailFile, setThumbnailFile] = useState(null);
@@ -623,6 +632,22 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
   const [uploadAuthToken, setUploadAuthToken] = useState(
     process.env.NEXT_PUBLIC_UPLOAD_AUTH_TOKEN || "NeverTrustTheLiving#446",
   );
+  const [userProfile, setUserProfile] = useState(null);
+
+  // Refs for file inputs
+  const buildFileInputRef = useRef(null);
+  const momentsFileInputRef = useRef(null);
+
+  // Key to force re-render of file inputs when needed
+  const [fileInputKey, setFileInputKey] = useState(0);
+
+  // Function to clear file inputs
+  const clearFileInputs = () => {
+    if (buildFileInputRef.current) buildFileInputRef.current.value = "";
+    if (momentsFileInputRef.current) momentsFileInputRef.current.value = "";
+    // Force re-render of file inputs
+    setFileInputKey((prev) => prev + 1);
+  };
 
   useEffect(() => {
     setName(game?.name || "");
@@ -634,6 +659,10 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
     setSelectedProjectsCsv(game?.HackatimeProjects || "");
     setPostContent("");
     setPostMessage("");
+    // Clear file inputs when switching games
+    setBuildFile(null);
+    setPostFiles([]);
+    clearFileInputs();
   }, [game?.id]);
 
   useEffect(() => {
@@ -654,6 +683,32 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
     };
     fetchProjects();
   }, [SlackId]);
+
+  // Fetch user profile
+  useEffect(() => {
+    let cancelled = false;
+    const fetchProfile = async () => {
+      if (!token) return;
+      try {
+        const res = await fetch("/api/getMyProfile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok && data?.ok) {
+          setUserProfile(data.profile || null);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
+      }
+    };
+    fetchProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   // Fetch Slack displayName and image via cachet
   useEffect(() => {
@@ -743,6 +798,26 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
     selectedProjectsCsv,
     thumbnailFile,
   ]);
+
+  const isProfileComplete = useMemo(() => {
+    if (!userProfile) return false;
+
+    const missingFields = [
+      !userProfile.firstName && "firstName",
+      !userProfile.lastName && "lastName",
+      !userProfile.email && "email",
+      !userProfile.githubUsername && "githubUsername",
+      !userProfile.birthday && "birthday",
+      !userProfile.slackId && "slackId",
+      !userProfile.address?.street1 && "street1",
+      !userProfile.address?.city && "city",
+      !userProfile.address?.state && "state",
+      !userProfile.address?.zipcode && "zipcode",
+      !userProfile.address?.country && "country",
+    ].filter(Boolean);
+
+    return missingFields.length === 0;
+  }, [userProfile]);
 
   const handleUpdate = async () => {
     if (!token || !game?.id) return;
@@ -1101,6 +1176,19 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
           based on your time, and send it to other hack clubbers in the
           community to playtest.
         </p>
+        <p
+          style={{
+            fontSize: 11,
+            opacity: 0.6,
+            fontStyle: "italic",
+            marginTop: 8,
+            marginBottom: 8,
+          }}
+        >
+          <strong>Demo Upload Tip:</strong> Upload a ZIP file containing your
+          game. There must be an index.html file in the ZIP. Or upload a .html
+          file that contains your entire game.
+        </p>
         <div style={{ marginTop: 16 }}>
           <div
             className={`moments-composer${isDragActive ? " drag-active" : ""}`}
@@ -1146,9 +1234,60 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
           >
             <textarea
               className="moments-textarea"
-              placeholder="Write what you added here..."
+              placeholder={
+                postType === "ship" && !isProfileComplete
+                  ? "Complete your profile to unlock demo posting"
+                  : "Write what you added here..."
+              }
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
+              disabled={postType === "ship" && !isProfileComplete}
+              style={{
+                opacity: postType === "ship" && !isProfileComplete ? 0.5 : 1,
+                cursor:
+                  postType === "ship" && !isProfileComplete
+                    ? "not-allowed"
+                    : "text",
+              }}
+              onPaste={async (e) => {
+                // Only handle image paste for moments, not ships
+                if (postType !== "moment") return;
+
+                const items = Array.from(e.clipboardData.items);
+                const imageItem = items.find((item) =>
+                  item.type.startsWith("image/"),
+                );
+
+                if (imageItem) {
+                  e.preventDefault(); // Prevent default paste behavior for images
+
+                  const file = imageItem.getAsFile();
+                  if (file) {
+                    // Check file size (5MB limit)
+                    if (file.size > 5 * 1024 * 1024) {
+                      alert(
+                        "Pasted image is too large. Please use an image under 5MB.",
+                      );
+                      return;
+                    }
+
+                    // Add the pasted image to postFiles
+                    setPostFiles((prev) => {
+                      const byKey = new Map();
+                      const addAll = (arr) => {
+                        for (const f of arr) {
+                          const key = `${f.name}|${f.size}|${f.lastModified}`;
+                          if (!byKey.has(key)) byKey.set(key, f);
+                        }
+                      };
+                      addAll(prev || []);
+                      addAll([file]);
+                      return Array.from(byKey.values());
+                    });
+                  }
+                }
+                // For non-image items, let the default paste behavior happen
+              }}
             />
             {/* Previews */}
             {Array.isArray(postFiles) && postFiles.length > 0 && (
@@ -1199,38 +1338,74 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
               {postType === "ship" ? (
                 <>
                   <input
-                    id="build-file-input"
+                    key={`build-file-${fileInputKey}`}
+                    ref={buildFileInputRef}
                     type="file"
                     accept=".zip"
                     style={{ display: "none" }}
                     onChange={(e) => {
                       const file =
                         (e.target.files && e.target.files[0]) || null;
+                      console.log("Build file selected:", file?.name);
+
+                      // Validate file extension
+                      if (file && !file.name.toLowerCase().endsWith(".zip")) {
+                        alert(
+                          "❌ Invalid file format!\n\nPlease select a .zip file from your Godot HTML5 export.\n\nIn Godot: Project → Export → Web → Export Project → Export as HTML5",
+                        );
+                        e.target.value = "";
+                        setBuildFile(null);
+                        return;
+                      }
+
                       setBuildFile(file);
                     }}
                   />
                   <button
                     type="button"
                     className="moments-attach-btn"
-                    onClick={() =>
-                      document.getElementById("build-file-input")?.click()
-                    }
+                    onClick={() => {
+                      console.log(
+                        "Build file button clicked, ref exists:",
+                        !!buildFileInputRef.current,
+                      );
+                      buildFileInputRef.current?.click();
+                    }}
+                    title="Upload a .zip file from Godot HTML5 export (Project → Export → Web → Export as HTML5)"
                   >
                     {buildFile
                       ? `Selected: ${buildFile.name}`
-                      : "Upload Godot Web Build"}
+                      : "Upload Godot Web Build (.zip)"}
                   </button>
                   <input type="hidden" value={uploadAuthToken} readOnly />
                 </>
               ) : (
                 <>
                   <input
-                    id="moments-file-input"
+                    key={`moments-file-${fileInputKey}`}
+                    ref={momentsFileInputRef}
                     type="file"
                     accept="image/*,video/*,audio/*,.mp3,.mp4,.gif,.mov,.wav,.ogg,.m4a,.aac"
                     style={{ display: "none" }}
                     onChange={(e) => {
                       const f = (e.target.files && e.target.files[0]) || null;
+                      console.log("Moments file selected:", f?.name);
+
+                      // Validate file type for moments
+                      if (f) {
+                        const validTypes = ["image/", "video/", "audio/"];
+                        const isValidType = validTypes.some((type) =>
+                          f.type.startsWith(type),
+                        );
+                        if (!isValidType) {
+                          alert(
+                            "❌ Invalid file type!\n\nPlease select an image, video, or audio file for your Shiba Moment.",
+                          );
+                          e.target.value = "";
+                          return;
+                        }
+                      }
+
                       setPostFiles(f ? [f] : []);
                       e.target.value = "";
                     }}
@@ -1238,13 +1413,17 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
                   <button
                     type="button"
                     className="moments-attach-btn"
-                    onClick={() =>
-                      document.getElementById("moments-file-input")?.click()
-                    }
+                    onClick={() => {
+                      console.log(
+                        "Moments file button clicked, ref exists:",
+                        !!momentsFileInputRef.current,
+                      );
+                      momentsFileInputRef.current?.click();
+                    }}
                   >
                     {postFiles.length
                       ? `Selected: ${postFiles[0].name}`
-                      : "Upload media file"}
+                      : "Upload Screenshots"}
                   </button>
                 </>
               )}
@@ -1259,7 +1438,12 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
                   type="button"
                   className={`moment-type-option${postType === "moment" ? " active" : ""}`}
                   aria-selected={postType === "moment"}
-                  onClick={() => setPostType("moment")}
+                  onClick={() => {
+                    setPostType("moment");
+                    setBuildFile(null);
+                    setPostFiles([]);
+                    clearFileInputs();
+                  }}
                 >
                   Devlog
                 </button>
@@ -1267,14 +1451,21 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
                   type="button"
                   className={`moment-type-option${postType === "ship" ? " active" : ""}`}
                   aria-selected={postType === "ship"}
-                  onClick={() => setPostType("ship")}
+                  onClick={() => {
+                    setPostType("ship");
+                    setBuildFile(null);
+                    setPostFiles([]);
+                    clearFileInputs();
+                  }}
                 >
                   Demo
                 </button>
               </div>
               <button
                 className="moments-post-btn"
-                disabled={isPosting}
+                disabled={
+                  isPosting || (postType === "ship" && !isProfileComplete)
+                }
                 onClick={async () => {
                   if (!token || !game?.id || !postContent.trim()) return;
                   if (postType === "moment" && postFiles.length === 0) {
@@ -1283,11 +1474,25 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
                     );
                     return;
                   }
-                  if (postType === "ship" && (!buildFile || !uploadAuthToken)) {
-                    alert(
-                      "Zip your godot web build and add it here with a msg of what you added!",
-                    );
-                    return;
+                  if (postType === "ship") {
+                    if (!isProfileComplete) {
+                      alert(
+                        "You must finish filling out your profile before you can upload your demo. See your profile on the top left corner of the main Shiba Homescreen",
+                      );
+                      return;
+                    }
+                    if (!game?.GitHubURL || game.GitHubURL.trim() === "") {
+                      alert(
+                        "You must update your game to have a GitHub Repository to upload your demo. All games in Shiba must be open-sourced.",
+                      );
+                      return;
+                    }
+                    if (!buildFile || !uploadAuthToken) {
+                      alert(
+                        "Zip your godot web build and add it here with a msg of what you added!",
+                      );
+                      return;
+                    }
                   }
                   setIsPosting(true);
                   setPostMessage("");
@@ -1303,9 +1508,16 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
                         apiBase,
                       });
                       if (!uploadResp.ok) {
-                        setPostMessage(
-                          `Upload failed: ${uploadResp.error || "Unknown error"}`,
-                        );
+                        if (uploadResp.validationError && uploadResp.details) {
+                          // Show detailed validation error with guidance
+                          alert(
+                            `Upload Failed: ${uploadResp.error}\n\n${uploadResp.details}`,
+                          );
+                        } else {
+                          setPostMessage(
+                            `Upload failed: ${uploadResp.error || "Unknown error"}`,
+                          );
+                        }
                         setIsPosting(false);
                         return;
                       }
@@ -1358,6 +1570,29 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
                       setPostFiles([]);
                       setPostMessage("Posted!");
                       setTimeout(() => setPostMessage(""), 2000);
+
+                      // If this was a Demo post, sync with YSWSDB
+                      if (postType === "ship") {
+                        try {
+                          await fetch("/api/SyncUserWithYSWSDB", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              token,
+                              gameId: game.id,
+                              githubUrl: game.GitHubURL,
+                              playLink: playLink,
+                            }),
+                          });
+                        } catch (syncError) {
+                          console.error(
+                            "Failed to sync with YSWSDB:",
+                            syncError,
+                          );
+                          // Don't fail the post if sync fails
+                        }
+                      }
+
                       // Update parent state with the new post for this game
                       const newPost = {
                         id: data.post?.id || undefined,
@@ -1382,21 +1617,33 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
                       });
                     } else {
                       setPostMessage(data?.message || "Failed to post");
+                      // Clear file inputs on failure
+                      setBuildFile(null);
+                      setPostFiles([]);
+                      clearFileInputs();
                     }
                   } catch (e) {
                     // eslint-disable-next-line no-console
                     console.error(e);
                     setPostMessage("Failed to post");
+                    // Clear file inputs on error
+                    setBuildFile(null);
+                    setPostFiles([]);
+                    clearFileInputs();
                   } finally {
                     setIsPosting(false);
                   }
                 }}
               >
                 {isPosting
-                  ? "Posting…"
+                  ? postType === "ship"
+                    ? "Shipping…"
+                    : "Posting…"
                   : overTotalLimit
                     ? "Screenshots exceed 5MB"
-                    : "Post"}
+                    : postType === "ship"
+                      ? "Ship"
+                      : "Post"}
               </button>
             </div>
           </div>
@@ -1406,6 +1653,44 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
               using smaller ones.
             </p>
           ) : null}
+          {postType === "ship" && !isProfileComplete && (
+            <div
+              style={{
+                marginTop: 8,
+                padding: "12px",
+                backgroundColor: "white",
+                border: "2px solid #b00020",
+                borderRadius: "8px",
+                fontSize: "12px",
+                color: "#b00020",
+                fontWeight: "bold",
+              }}
+            >
+              ⚠️ Missing profile details,{" "}
+              <button
+                onClick={() => {
+                  onBack();
+                  if (onOpenProfile) {
+                    onOpenProfile();
+                  }
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#ff6fa5",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  padding: 0,
+                  font: "inherit",
+                  fontSize: "inherit",
+                  fontWeight: "bold",
+                }}
+              >
+                complete your profile
+              </button>{" "}
+              to unlock demo posting
+            </div>
+          )}
           {postMessage ? (
             <p style={{ marginTop: 8, opacity: 0.7 }}>{postMessage}</p>
           ) : null}
@@ -1426,26 +1711,76 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
                       alignItems: "center",
                       gap: 10,
                       marginBottom: 8,
+                      justifyContent: "space-between",
                     }}
                   >
                     <div
-                      className="slack-avatar"
-                      style={{
-                        backgroundImage: slackProfile?.image
-                          ? `url(${slackProfile.image})`
-                          : "none",
-                      }}
-                    />
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <span style={{ fontWeight: 700, fontSize: 13 }}>
-                        {slackProfile?.displayName || "User"}
-                      </span>
-                      <span style={{ fontSize: 11, opacity: 0.6 }}>
-                        {p.createdAt
-                          ? new Date(p.createdAt).toLocaleString()
-                          : ""}
-                      </span>
+                      style={{ display: "flex", alignItems: "center", gap: 10 }}
+                    >
+                      <div
+                        className="slack-avatar"
+                        style={{
+                          backgroundImage: slackProfile?.image
+                            ? `url(${slackProfile.image})`
+                            : "none",
+                        }}
+                      />
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ fontWeight: 700, fontSize: 13 }}>
+                          {slackProfile?.displayName || "User"}
+                        </span>
+                        <span style={{ fontSize: 11, opacity: 0.6 }}>
+                          {p.createdAt
+                            ? new Date(p.createdAt).toLocaleString()
+                            : ""}
+                        </span>
+                      </div>
                     </div>
+                    <button
+                      style={{
+                        fontSize: 12,
+                        cursor: "pointer",
+                        color: "#b00020",
+                        background: "none",
+                        border: "none",
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        opacity: 0.7,
+                        transition: "opacity 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => (e.target.style.opacity = "1")}
+                      onMouseLeave={(e) => (e.target.style.opacity = "0.7")}
+                      onClick={async () => {
+                        const confirmText = `DELETE POST`;
+                        const input = window.prompt(
+                          `Type "${confirmText}" to confirm deletion`,
+                        );
+                        if (input !== confirmText) return;
+
+                        try {
+                          const res = await fetch("/api/deletePost", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ token, postId: p.id }),
+                          });
+                          const data = await res.json().catch(() => ({}));
+                          if (res.ok && data?.ok) {
+                            // Remove the post from local state
+                            const updatedPosts = game.posts.filter(
+                              (_, index) => index !== pIdx,
+                            );
+                            onUpdated?.({ id: game.id, posts: updatedPosts });
+                          } else {
+                            alert("Failed to delete post");
+                          }
+                        } catch (e) {
+                          console.error(e);
+                          alert("Failed to delete post");
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
                   </div>
                   <div style={{ marginTop: 8 }}>
                     {(() => {
@@ -1458,6 +1793,10 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
                           playLink={p.PlayLink}
                           gameName={game?.name || ""}
                           thumbnailUrl={game?.thumbnailUrl || ""}
+                          token={token}
+                          onPlayCreated={(play) => {
+                            console.log("Play created:", play);
+                          }}
                         />
                       );
                     })()}
@@ -1608,6 +1947,11 @@ function DetailView({ game, onBack, token, onUpdated, SlackId }) {
           cursor: pointer;
           font-weight: 800;
           font-size: 13px;
+        }
+        .moments-post-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          background: #ccc;
         }
         .nice-input {
           padding: 10px;
