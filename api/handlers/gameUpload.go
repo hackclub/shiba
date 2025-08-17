@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"shiba-api/structs"
+	"shiba-api/sync"
 
 	"github.com/google/uuid"
 )
@@ -40,7 +41,7 @@ func GameUploadHandler(srv *structs.Server) http.HandlerFunc {
 		).MaxRecords(1).ReturnFields("Email", "user_id").Do()
 
 		if err != nil {
-			http.Error(w, "Failed to validate token: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to validate token..", http.StatusInternalServerError)
 			return
 		}
 
@@ -119,6 +120,7 @@ func GameUploadHandler(srv *structs.Server) http.HandlerFunc {
 				return
 			}
 
+			// write locally first
 			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
 			if err != nil {
 				rc.Close()
@@ -133,9 +135,16 @@ func GameUploadHandler(srv *structs.Server) http.HandlerFunc {
 				http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
+
 		}
 
 		log.Printf("User with email %s sucessfully uploaded a new game snapshot!", records.Records[0].Fields["Email"])
+
+		go func(folder string, srv *structs.Server) {
+			if err := sync.UploadFolder(folder, *srv); err != nil {
+				log.Printf("Failed to sync folder %s to R2: %v", folder, err)
+			}
+		}(destDir, srv)
 
 		// return a okay response + the game slug/id
 

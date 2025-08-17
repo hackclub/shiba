@@ -9,7 +9,5 @@ type Server struct {
 	AirtableClient    *airtable.Client
 	AirtableBaseTable *airtable.Table
 	S3Client          *s3.Client
-	LocalStorageDir   string
-	GamesPrefix       string
 	AdminToken        string
 }

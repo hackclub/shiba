@@ -8,6 +8,8 @@ import (
 	"os"
 	"shiba-api/api"
 	"shiba-api/structs"
+	"shiba-api/sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -21,9 +23,7 @@ import (
 
 func NewServer(s3c *s3.Client, localStorageDir, gamesPrefix string) *structs.Server {
 	return &structs.Server{
-		S3Client:        s3c,
-		LocalStorageDir: localStorageDir,
-		GamesPrefix:     gamesPrefix,
+		S3Client: s3c,
 		AirtableClient: airtable.NewClient(
 			os.Getenv("AIRTABLE_API_KEY"),
 		),
@@ -69,27 +69,26 @@ func main() {
 	log.Println("-----------------------------")
 	log.Println("Initializing the server...")
 
-	cfg, err := config.LoadDefaultConfig(
-		context.TODO(),
+	// Make the s3 client with R2 credentials
+
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 			r2AccessKey, r2SecretKey, "",
 		)),
-		config.WithRegion(r2Region),
-		config.WithEndpointResolverWithOptions(
-			aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-				return aws.Endpoint{
-					URL:           r2Endpoint,
-					SigningRegion: r2Region,
-				}, nil
-			}),
-		),
+		config.WithRegion("auto"),
 	)
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
+	s3Client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(r2Endpoint)
+	})
 
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	s3Client := s3.NewFromConfig(cfg)
 	srv := NewServer(s3Client, "./local_storage", "games")
 
 	srv.AirtableBaseTable = srv.AirtableClient.GetTable(os.Getenv("AIRTABLE_BASE_ID"), "Users")
@@ -97,6 +96,22 @@ func main() {
 		log.Fatal("Failed to get Airtable base table")
 	}
 	log.Println("Adding the airtable base...")
+
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute) // interval
+		defer ticker.Stop()
+
+		for {
+			log.Println("Starting background R2 sync...")
+			if err := sync.SyncFromR2(*srv); err != nil {
+				log.Printf("R2 sync error: %v", err)
+			} else {
+				log.Println("R2 sync completed successfully")
+			}
+			<-ticker.C
+		}
+	}()
+
 	r := chi.NewRouter()
 
 	// Cors setup
