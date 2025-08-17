@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import AppHead from "@/components/AppHead";
 import GameCarousel from "@/components/GameCarousel";
 import GameDetails from "@/components/GameDetails";
-import useAudioManager from "@/components/useAudioManager";
+import useAudioManager from "@/components/AudioManager";
 
 export function MovingBackground() {
   const ICON_SIZE = 64;
@@ -46,7 +46,10 @@ export function MovingBackground() {
         const rowsCount = grid.rows || 0;
         const scrollDistance = rowsCount * (ICON_SIZE + GAP);
         const direction = colIndex % 2 === 0 ? "bgScrollUp" : "bgScrollDown";
-        const durationSeconds = Math.max(1, scrollDistance / SPEED_PX_PER_SECOND);
+        const durationSeconds = Math.max(
+          1,
+          scrollDistance / SPEED_PX_PER_SECOND,
+        );
         return (
           <div
             key={colIndex}
@@ -88,7 +91,8 @@ export function MovingBackground() {
                       willChange: "transform",
                       animationName: "pulseScale",
                       animationDuration: "2.4s",
-                      animationTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      animationTimingFunction:
+                        "cubic-bezier(0.34, 1.56, 0.64, 1)",
                       animationIterationCount: "infinite",
                       animationDelay: `-${(colIndex * 0.15 + rowIndex * 0.1).toFixed(2)}s`,
                     }}
@@ -111,7 +115,8 @@ export function MovingBackground() {
                       willChange: "transform",
                       animationName: "pulseScale",
                       animationDuration: "2.4s",
-                      animationTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      animationTimingFunction:
+                        "cubic-bezier(0.34, 1.56, 0.64, 1)",
                       animationIterationCount: "infinite",
                       animationDelay: `-${(colIndex * 0.15 + rowIndex * 0.1 + 1.2).toFixed(2)}s`,
                     }}
@@ -124,26 +129,52 @@ export function MovingBackground() {
       })}
       <style jsx>{`
         @keyframes bgScrollUp {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(calc(-1 * var(--scrollDistance))); }
+          0% {
+            transform: translateY(0);
+          }
+          100% {
+            transform: translateY(calc(-1 * var(--scrollDistance)));
+          }
         }
         @keyframes bgScrollDown {
-          0% { transform: translateY(calc(-1 * var(--scrollDistance))); }
-          100% { transform: translateY(0); }
+          0% {
+            transform: translateY(calc(-1 * var(--scrollDistance)));
+          }
+          100% {
+            transform: translateY(0);
+          }
         }
         @keyframes pulseScale {
-          0% { transform: scale(0.5); }
-          40% { transform: scale(1.05); }
-          55% { transform: scale(0.95); }
-          70% { transform: scale(1.02); }
-          100% { transform: scale(0.5); }
+          0% {
+            transform: scale(0.5);
+          }
+          40% {
+            transform: scale(1.05);
+          }
+          55% {
+            transform: scale(0.95);
+          }
+          70% {
+            transform: scale(1.02);
+          }
+          100% {
+            transform: scale(0.5);
+          }
         }
       `}</style>
     </div>
   );
 }
 
-function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile, token, onUpdated }) {
+function ProfileModal({
+  isOpen,
+  onClose,
+  slackProfile,
+  onLogout,
+  initialProfile,
+  token,
+  onUpdated,
+}) {
   const [shouldRender, setShouldRender] = useState(Boolean(isOpen));
   const [isExiting, setIsExiting] = useState(false);
   const [githubUsername, setGithubUsername] = useState("");
@@ -200,9 +231,27 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
 
   const hasChanges = useMemo(() => {
     return Boolean(
-      githubUsername || firstName || lastName || birthday || street1 || street2 || city || zipcode || country
+      githubUsername ||
+        firstName ||
+        lastName ||
+        birthday ||
+        street1 ||
+        street2 ||
+        city ||
+        zipcode ||
+        country,
     );
-  }, [githubUsername, firstName, lastName, birthday, street1, street2, city, zipcode, country]);
+  }, [
+    githubUsername,
+    firstName,
+    lastName,
+    birthday,
+    street1,
+    street2,
+    city,
+    zipcode,
+    country,
+  ]);
 
   if (!shouldRender) return null;
 
@@ -276,29 +325,49 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
           </button>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center", textAlign: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            alignItems: "center",
+            textAlign: "center",
+          }}
+        >
           {initialProfile?.slackId ? (
             <>
-              <div style={{
-                width: 88,
-                height: 88,
-                borderRadius: 12,
-                border: "1px solid rgba(0,0,0,0.18)",
-                overflow: "hidden",
-                backgroundColor: "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
+              <div
+                style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: 12,
+                  border: "1px solid rgba(0,0,0,0.18)",
+                  overflow: "hidden",
+                  backgroundColor: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 {image ? (
-                  <img src={image} alt={displayName || "Slack Avatar"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img
+                    src={image}
+                    alt={displayName || "Slack Avatar"}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
                 ) : (
                   <div style={{ fontSize: 12, opacity: 0.6 }}>No Avatar</div>
                 )}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <span style={{ fontWeight: 700 }}>{displayName || ""}</span>
-                <span style={{ fontSize: 12, opacity: 0.7 }}>Signed in via Slack</span>
+                <span style={{ fontSize: 12, opacity: 0.7 }}>
+                  Signed in via Slack
+                </span>
               </div>
             </>
           ) : (
@@ -306,15 +375,24 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
               type="button"
               onClick={() => {
                 const base = window.location.origin;
-                const w = window.open(`${base}/api/slack/oauthStart?state=${encodeURIComponent(token || '')}` , 'slack_oauth', 'width=600,height=700');
+                const w = window.open(
+                  `${base}/api/slack/oauthStart?state=${encodeURIComponent(token || "")}`,
+                  "slack_oauth",
+                  "width=600,height=700",
+                );
                 const listener = async (evt) => {
-                  if (!evt || !evt.data || evt.data.type !== 'SLACK_CONNECTED') return;
+                  if (!evt || !evt.data || evt.data.type !== "SLACK_CONNECTED")
+                    return;
                   try {
-                    const id = String(evt.data.slackId || '');
+                    const id = String(evt.data.slackId || "");
                     if (!id) return;
                     // Re-fetch profile to get canonical state from server
                     try {
-                      const res = await fetch('/api/getMyProfile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
+                      const res = await fetch("/api/getMyProfile", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ token }),
+                      });
                       const data = await res.json().catch(() => ({}));
                       if (res.ok && data?.ok) {
                         onUpdated?.(data.profile);
@@ -325,19 +403,21 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
                       onUpdated?.({ ...(initialProfile || {}), slackId: id });
                     }
                   } catch (_) {}
-                  window.removeEventListener('message', listener);
-                  try { w && w.close && w.close(); } catch (_) {}
+                  window.removeEventListener("message", listener);
+                  try {
+                    w && w.close && w.close();
+                  } catch (_) {}
                 };
-                window.addEventListener('message', listener);
+                window.addEventListener("message", listener);
               }}
               style={{
-                appearance: 'none',
+                appearance: "none",
                 border: 0,
-                background: 'linear-gradient(180deg, #ff8ec3 0%, #ff6fa5 100%)',
-                color: '#fff',
+                background: "linear-gradient(180deg, #ff8ec3 0%, #ff6fa5 100%)",
+                color: "#fff",
                 borderRadius: 10,
-                padding: '10px 14px',
-                cursor: 'pointer',
+                padding: "10px 14px",
+                cursor: "pointer",
                 fontWeight: 800,
               }}
             >
@@ -346,14 +426,27 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
           )}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
           <span style={{ fontSize: 12, opacity: 0.7 }}>GitHub</span>
           <input
             type="text"
             placeholder="GitHub Username"
             value={githubUsername}
             onChange={(e) => setGithubUsername(e.target.value)}
-            style={{ padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", background: "rgba(255,255,255,0.8)", outline: "none" }}
+            style={{
+              padding: 10,
+              borderRadius: 10,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: "rgba(255,255,255,0.8)",
+              outline: "none",
+            }}
           />
           <span style={{ fontSize: 12, opacity: 0.7 }}>Name</span>
           <div style={{ display: "flex", gap: 8 }}>
@@ -362,14 +455,28 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
               placeholder="First Name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              style={{ flex: 1, padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", background: "rgba(255,255,255,0.8)", outline: "none" }}
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.18)",
+                background: "rgba(255,255,255,0.8)",
+                outline: "none",
+              }}
             />
             <input
               type="text"
               placeholder="Last Name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              style={{ flex: 1, padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", background: "rgba(255,255,255,0.8)", outline: "none" }}
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.18)",
+                background: "rgba(255,255,255,0.8)",
+                outline: "none",
+              }}
             />
           </div>
           <span style={{ fontSize: 12, opacity: 0.7 }}>Birthday</span>
@@ -378,23 +485,48 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
             value={birthday}
             onChange={(e) => setBirthday(e.target.value)}
             placeholder="YYYY-MM-DD"
-            style={{ padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", background: "rgba(255,255,255,0.8)", outline: "none" }}
+            style={{
+              padding: 10,
+              borderRadius: 10,
+              border: "1px solid rgba(0,0,0,0.18)",
+              background: "rgba(255,255,255,0.8)",
+              outline: "none",
+            }}
           />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              marginTop: 4,
+            }}
+          >
             <span style={{ fontSize: 12, opacity: 0.7 }}>Address</span>
             <input
               type="text"
               placeholder="Street Address"
               value={street1}
               onChange={(e) => setStreet1(e.target.value)}
-              style={{ padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", background: "rgba(255,255,255,0.8)", outline: "none" }}
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.18)",
+                background: "rgba(255,255,255,0.8)",
+                outline: "none",
+              }}
             />
             <input
               type="text"
               placeholder="Street Address #2"
               value={street2}
               onChange={(e) => setStreet2(e.target.value)}
-              style={{ padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", background: "rgba(255,255,255,0.8)", outline: "none" }}
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.18)",
+                background: "rgba(255,255,255,0.8)",
+                outline: "none",
+              }}
             />
             <div style={{ display: "flex", gap: 8 }}>
               <input
@@ -402,14 +534,28 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
                 placeholder="City"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                style={{ flex: 1, padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", background: "rgba(255,255,255,0.8)", outline: "none" }}
+                style={{
+                  flex: 1,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid rgba(0,0,0,0.18)",
+                  background: "rgba(255,255,255,0.8)",
+                  outline: "none",
+                }}
               />
               <input
                 type="text"
                 placeholder="Zipcode"
                 value={zipcode}
                 onChange={(e) => setZipcode(e.target.value)}
-                style={{ width: 140, padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", background: "rgba(255,255,255,0.8)", outline: "none" }}
+                style={{
+                  width: 140,
+                  padding: 10,
+                  borderRadius: 10,
+                  border: "1px solid rgba(0,0,0,0.18)",
+                  background: "rgba(255,255,255,0.8)",
+                  outline: "none",
+                }}
               />
             </div>
             <input
@@ -417,7 +563,13 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
               placeholder="Country"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              style={{ padding: 10, borderRadius: 10, border: "1px solid rgba(0,0,0,0.18)", background: "rgba(255,255,255,0.8)", outline: "none" }}
+              style={{
+                padding: 10,
+                borderRadius: 10,
+                border: "1px solid rgba(0,0,0,0.18)",
+                background: "rgba(255,255,255,0.8)",
+                outline: "none",
+              }}
             />
           </div>
         </div>
@@ -436,9 +588,9 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
                     birthday,
                     address: { street1, street2, city, zipcode, country },
                   };
-                  const res = await fetch('/api/updateMyProfile', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                  const res = await fetch("/api/updateMyProfile", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ token, profile: payload }),
                   });
                   const data = await res.json().catch(() => ({}));
@@ -483,15 +635,16 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
             Logout
           </button>
         </div>
-
-        
       </div>
       <style jsx>{`
         .modal-overlay {
           background-color: rgba(255, 255, 255, 0);
           backdrop-filter: blur(0px);
           -webkit-backdrop-filter: blur(0px);
-          transition: backdrop-filter 240ms ease, -webkit-backdrop-filter 240ms ease, background-color 240ms ease;
+          transition:
+            backdrop-filter 240ms ease,
+            -webkit-backdrop-filter 240ms ease,
+            background-color 240ms ease;
         }
         .modal-overlay.enter {
           background-color: rgba(255, 255, 255, 0.3);
@@ -506,10 +659,18 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
         .modal-card {
           transform: translateY(6px) scale(0.98);
           opacity: 0;
-          transition: transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 220ms ease;
+          transition:
+            transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1),
+            opacity 220ms ease;
         }
-        .modal-card.enter { transform: translateY(0) scale(1); opacity: 1; }
-        .modal-card.exit { transform: translateY(6px) scale(0.98); opacity: 0; }
+        .modal-card.enter {
+          transform: translateY(0) scale(1);
+          opacity: 1;
+        }
+        .modal-card.exit {
+          transform: translateY(6px) scale(0.98);
+          opacity: 0;
+        }
         .big-cta-btn {
           appearance: none;
           width: 100%;
@@ -523,34 +684,58 @@ function ProfileModal({ isOpen, onClose, slackProfile, onLogout, initialProfile,
           letter-spacing: 0.2px;
           background: linear-gradient(180deg, #ff8ec3 0%, #ff6fa5 100%);
           transform: translateY(0);
-          transition: transform 120ms ease, opacity 120ms ease;
+          transition:
+            transform 120ms ease,
+            opacity 120ms ease;
         }
-        .big-cta-btn:hover { transform: translateY(-1px); }
-        .big-cta-btn:active { transform: translateY(1px); }
+        .big-cta-btn:hover {
+          transform: translateY(-1px);
+        }
+        .big-cta-btn:active {
+          transform: translateY(1px);
+        }
         .big-cta-btn:disabled {
           opacity: 0.8;
           cursor: not-allowed;
           transform: none;
-          color: rgba(255,255,255,0.9);
-          background: linear-gradient(180deg, rgba(219, 37, 112, 0.45) 0%, rgba(176, 22, 89, 0.45) 100%);
+          color: rgba(255, 255, 255, 0.9);
+          background: linear-gradient(
+            180deg,
+            rgba(219, 37, 112, 0.45) 0%,
+            rgba(176, 22, 89, 0.45) 100%
+          );
         }
       `}</style>
     </div>
   );
 }
 
-export default function HomeScreen({ games, setAppOpen, selectedGame, setSelectedGame, SlackId, token, profile, setProfile }) {
-
-
+export default function HomeScreen({
+  games,
+  setAppOpen,
+  selectedGame,
+  setSelectedGame,
+  SlackId,
+  token,
+  profile,
+  setProfile,
+}) {
   // selectedGame is now controlled by the parent (index.js)
   const [tokyoTime, setTokyoTime] = useState("");
-  const [slackProfile, setSlackProfile] = useState({ displayName: "", image: "" });
+  const [slackProfile, setSlackProfile] = useState({
+    displayName: "",
+    image: "",
+  });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Preload SFX and game clip audios for instant playback
   const sfxFiles = ["next.mp3", "prev.mp3", "shiba-bark.mp3"];
   const clipFiles = games.map((g) => g.gameClipAudio).filter(Boolean);
-  const { play: playSound, playClip, stopAll } = useAudioManager([...sfxFiles, ...clipFiles]);
+  const {
+    play: playSound,
+    playClip,
+    stopAll,
+  } = useAudioManager([...sfxFiles, ...clipFiles]);
 
   // When selected game changes, play its clip immediately using the preloaded element
   useEffect(() => {
@@ -582,10 +767,15 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
     const fetchSlack = async () => {
       if (!SlackId) return;
       try {
-        const res = await fetch(`https://cachet.dunkirk.sh/users/${encodeURIComponent(SlackId)}`);
+        const res = await fetch(
+          `https://cachet.dunkirk.sh/users/${encodeURIComponent(SlackId)}`,
+        );
         const json = await res.json().catch(() => ({}));
         if (!cancelled && json && (json.displayName || json.image)) {
-          setSlackProfile({ displayName: json.displayName || "", image: json.image || "" });
+          setSlackProfile({
+            displayName: json.displayName || "",
+            image: json.image || "",
+          });
         }
       } catch (e) {
         // eslint-disable-next-line no-console
@@ -593,47 +783,62 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
       }
     };
     fetchSlack();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [SlackId]);
 
   return (
     <>
       <AppHead title="Shiba" />
-      <main style={{ position: "relative", backgroundColor: games[selectedGame].bgColor, transition: "background-color 0.5s ease-in-out", minHeight: "100vh" }}>
+      <main
+        style={{
+          position: "relative",
+          backgroundColor: games[selectedGame].bgColor,
+          transition: "background-color 0.5s ease-in-out",
+          minHeight: "100vh",
+        }}
+      >
         <MovingBackground />
-        <div style={{
-          position: "absolute",
-          top: 16,
-          left: 64,
-          width: "calc(100% - 128px)",
-          borderRadius: 16,
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: "rgba(255, 255, 255, 0.51)",
-          backdropFilter: "saturate(180%) blur(14px)",
-          WebkitBackdropFilter: "saturate(180%) blur(4px)",
-          border: "1px solid rgba(255, 255, 255, 0.35)",
-          boxShadow: "inset 0 1px 1.5px rgba(255, 255, 255, 0.6), inset 0 -8px 16px rgba(255, 255, 255, 0.6)",
-          borderBottom: "0px solid rgba(0, 0, 0, 0)",
-          justifyContent: "space-between",
-          padding: 16,
-          paddingLeft: 24,
-          paddingRight: 24
-        }}>
-          <div onClick={() => setIsProfileOpen(true)} style={{
+        <div
+          style={{
+            position: "absolute",
+            top: 16,
+            left: 64,
+            width: "calc(100% - 128px)",
+            borderRadius: 16,
             display: "flex",
-            height: 32,
-            width: 32,
-            aspectRatio: 1,
-            backgroundColor: "white",
-            border: "1px solid rgba(0, 0, 0, 0.3)",
-            overflow: "hidden",
+            flexDirection: "row",
             alignItems: "center",
-            borderRadius: 8,
-            justifyContent: "center",
-            cursor: "pointer"
-          }}>
+            backgroundColor: "rgba(255, 255, 255, 0.51)",
+            backdropFilter: "saturate(180%) blur(14px)",
+            WebkitBackdropFilter: "saturate(180%) blur(4px)",
+            border: "1px solid rgba(255, 255, 255, 0.35)",
+            boxShadow:
+              "inset 0 1px 1.5px rgba(255, 255, 255, 0.6), inset 0 -8px 16px rgba(255, 255, 255, 0.6)",
+            borderBottom: "0px solid rgba(0, 0, 0, 0)",
+            justifyContent: "space-between",
+            padding: 16,
+            paddingLeft: 24,
+            paddingRight: 24,
+          }}
+        >
+          <div
+            onClick={() => setIsProfileOpen(true)}
+            style={{
+              display: "flex",
+              height: 32,
+              width: 32,
+              aspectRatio: 1,
+              backgroundColor: "white",
+              border: "1px solid rgba(0, 0, 0, 0.3)",
+              overflow: "hidden",
+              alignItems: "center",
+              borderRadius: 8,
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
             {slackProfile.image ? (
               <img
                 src={slackProfile.image}
@@ -642,10 +847,20 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
               />
             ) : null}
           </div>
-          <p style={{ fontFamily: "GT Maru", fontWeight: "bold" }}>Shiba Arcade</p>
+          <p style={{ fontFamily: "GT Maru", fontWeight: "bold" }}>
+            Shiba Arcade
+          </p>
           <p style={{ margin: 0 }}>{tokyoTime}</p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "100vh", justifyContent: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            height: "100vh",
+            justifyContent: "center",
+          }}
+        >
           <GameCarousel
             games={games}
             onSelect={setSelectedGame}
@@ -656,40 +871,46 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
           />
           <GameDetails game={games[selectedGame]} />
         </div>
-        <div style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          width: "100%",
-          display: "flex",
-          backgroundColor: "rgba(255, 255, 255, 0.35)",
-          alignItems: "center",
-          backdropFilter: "saturate(180%) blur(14px)",
-          WebkitBackdropFilter: "saturate(180%) blur(14px)",
-          border: "1px solid #fff",
-          boxShadow: "none",
-          justifyContent: "space-between",
-          paddingLeft: 16,
-          paddingRight: 16,
-          paddingTop: 32,
-          paddingBottom: 32,
-          WebkitClipPath: "polygon(0 0, 88px 0, 88px 64px, calc(100% - 88px) 64px, calc(100% - 88px) 0, 100% 0, 100% 100%, 0 100%)",
-          clipPath: "polygon(0 0, 88px 0, 88px 64px, calc(100% - 88px) 64px, calc(100% - 88px) 0, 100% 0, 100% 100%, 0 100%)",
-        }}>
-          <div style={{
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            width: "100%",
             display: "flex",
-            height: 48,
-            marginTop: -24,
-            width: 48,
-            backgroundColor: "rgba(255, 255, 255, 0.5)",
-            aspectRatio: 1,
-            border: "1px solid rgba(0, 0, 0, 0.1)",
-            borderRadius: "4px",
-            padding: 8,
-            boxSizing: "border-box",
+            backgroundColor: "rgba(255, 255, 255, 0.35)",
             alignItems: "center",
-            justifyContent: "center"
-          }}>
+            backdropFilter: "saturate(180%) blur(14px)",
+            WebkitBackdropFilter: "saturate(180%) blur(14px)",
+            border: "1px solid #fff",
+            boxShadow: "none",
+            justifyContent: "space-between",
+            paddingLeft: 16,
+            paddingRight: 16,
+            paddingTop: 32,
+            paddingBottom: 32,
+            WebkitClipPath:
+              "polygon(0 0, 88px 0, 88px 64px, calc(100% - 88px) 64px, calc(100% - 88px) 0, 100% 0, 100% 100%, 0 100%)",
+            clipPath:
+              "polygon(0 0, 88px 0, 88px 64px, calc(100% - 88px) 64px, calc(100% - 88px) 0, 100% 0, 100% 100%, 0 100%)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              height: 48,
+              marginTop: -24,
+              width: 48,
+              backgroundColor: "rgba(255, 255, 255, 0.5)",
+              aspectRatio: 1,
+              border: "1px solid rgba(0, 0, 0, 0.1)",
+              borderRadius: "4px",
+              padding: 8,
+              boxSizing: "border-box",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <img
               src="./ChatMessage.svg"
               alt="Chat Message"
@@ -697,21 +918,22 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
                 width: "100%",
                 opacity: 0.85,
                 height: "100%",
-                objectFit: "contain"
+                objectFit: "contain",
               }}
             />
           </div>
-          <div style={{
-            display: "flex",
-            height: 64,
-            width: "100%",
-            marginLeft: 24,
-            marginRight: 24,
-            borderRadius: "0px 0px 16px 16px",
-            marginTop: -33,
-            backgroundColor: "transparent",
-          }}>
-          </div>
+          <div
+            style={{
+              display: "flex",
+              height: 64,
+              width: "100%",
+              marginLeft: 24,
+              marginRight: 24,
+              borderRadius: "0px 0px 16px 16px",
+              marginTop: -33,
+              backgroundColor: "transparent",
+            }}
+          ></div>
           <div
             onClick={() => playSound("shiba-bark.mp3")}
             style={{
@@ -725,11 +947,9 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
               backgroundRepeat: "no-repeat",
               aspectRatio: 1,
               border: "1px solid rgba(0, 0, 0, 0.1)",
-              borderRadius: 4
+              borderRadius: 4,
             }}
-          >
-          </div>
-
+          ></div>
         </div>
       </main>
       <ProfileModal
@@ -749,5 +969,3 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
     </>
   );
 }
-
-
