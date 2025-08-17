@@ -27,5 +27,3 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD curl -fsS http://localho
 
 # Start the API
 CMD ["node", "server.js"]
-
-
