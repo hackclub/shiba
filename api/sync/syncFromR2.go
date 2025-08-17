@@ -18,6 +18,13 @@ func SyncFromR2(server structs.Server) error {
 	bucket := os.Getenv("R2_BUCKET")
 	client := server.S3Client
 
+	// Check if we're in a debug env and not syncing if so
+
+	if os.Getenv("DEBUG_ENV") == "true" {
+		fmt.Println("Skipping R2 sync in debug environment")
+		return nil
+	}
+
 	fmt.Println("Starting sync from R2 to local .games folder...")
 
 	keys, err := ListR2Objects(bucket, "games/", client)
