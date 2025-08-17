@@ -8,7 +8,6 @@
  */
 
 //it's ok that this is public, it's for game upload client-side.  (From Thomas)
-const HARDCODED_UPLOAD_TOKEN = "NeverTrustTheLiving#446";
 
 export async function uploadGame({ file, name, token, apiBase }) {
   if (!file) return { ok: false, error: "Missing file" };
@@ -43,13 +42,15 @@ export async function uploadGame({ file, name, token, apiBase }) {
     });
     const text = await res.text();
     let data = null;
-    try { data = JSON.parse(text); } catch {}
+    try {
+      data = JSON.parse(text);
+    } catch {}
     if (!res.ok) {
       return { ok: false, error: (data && data.error) || text };
     }
     const out = data || {};
     if (!out.playUrl && out.gameId) {
-      out.playUrl = `/play/${encodeURIComponent(out.gameId)}`;
+      out.playUrl = `/play/${encodeURIComponent(out.gameId)}/`;
     }
     return { ok: true, gameId: out.gameId, playUrl: out.playUrl };
   } catch (e) {
@@ -66,5 +67,3 @@ function slugify(str) {
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
-
-
