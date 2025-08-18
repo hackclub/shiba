@@ -1039,6 +1039,8 @@ export default function HomeScreen({
         style={{
           position: "relative",
           backgroundColor: games[selectedGame].bgColor,
+          // Vignetting effect
+          backgroundImage: `radial-gradient(circle at center, transparent, rgba(0, 0, 0, 0.2) 80%)`,
           transition: "background-color 0.5s ease-in-out",
           minHeight: "100vh",
         }}
