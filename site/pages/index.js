@@ -115,45 +115,8 @@ export default function Home() {
     };
   }, [token]);
 
-  const requestOtp = async (email) => {
-    try {
-      const res = await fetch("/api/newLogin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json().catch(() => ({}));
-      return { ok: res.ok, ...data };
-    } catch (e) {
-      return { ok: false, message: "Network error" };
-    }
-  };
-
-  const verifyOtp = async (email, otp) => {
-    try {
-      const res = await fetch("/api/tryOTP", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.token) {
-        localStorage.setItem("token", data.token);
-      }
-      return { ok: res.ok, ...data };
-    } catch (e) {
-      return { ok: false, message: "Network error" };
-    }
-  };
-
   if (token === null) {
-    return (
-      <StartScreen
-        setToken={setToken}
-        requestOtp={requestOtp}
-        verifyOtp={verifyOtp}
-      />
-    );
+    return <StartScreen setToken={setToken} />;
   }
 
   if (token !== null) {
@@ -200,11 +163,15 @@ export default function Home() {
               goHome={goHome}
               token={token}
               SlackId={profile?.slackId || null}
-              onOpenProfile={appOpen === "My Games" ? () => {
-                setAutoOpenProfile(true);
-                setDisableTopBar(false);
-                setAppOpen("Home");
-              } : undefined}
+              onOpenProfile={
+                appOpen === "My Games"
+                  ? () => {
+                      setAutoOpenProfile(true);
+                      setDisableTopBar(false);
+                      setAppOpen("Home");
+                    }
+                  : undefined
+              }
             />
           </div>
         </div>

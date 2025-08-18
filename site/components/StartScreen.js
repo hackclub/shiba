@@ -1,19 +1,46 @@
 import { useState, useRef, useEffect } from "react";
 import { MovingBackground } from "./HomeScreen";
-import { formatJamCountdown } from './jamConfig';
+import { formatJamCountdown } from "./jamConfig";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [stage, setStage] = useState("email"); // whether user is inputting email or otp
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [clickedIn, setClickedIn] = useState(false);
+export default function StartScreen({ setToken }) {
   const circleRef = useRef(null);
   const emailInputRef = useRef(null);
-  // Start with empty string to avoid SSR/client mismatch, populate after mount.
-  const [jamCountdownText, setJamCountdownText] = useState('');
+  const [jamCountdownText, setJamCountdownText] = useState("");
   const mountedRef = useRef(false);
+
+  const searchParams = useSearchParams();
+  const code = searchParams.get("code");
+
+  useEffect(() => {
+    if (code) {
+      console.log("Authorization code:", code);
+      // Make a request to /api/newLogin with the code to get the token
+      const fetchToken = async () => {
+        try {
+          const res = await fetch("/api/slackLogin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code }),
+          });
+          const data = await res.json();
+          if (res.ok && data?.token) {
+            setToken(data.token);
+            // Set the token in localstorage too
+            localStorage.setItem("token", data.token);
+          } else {
+            console.error(
+              "Failed to get token:",
+              data.message || "Unknown error",
+            );
+          }
+        } catch (error) {
+          console.error("Error fetching token:", error);
+        }
+      };
+      fetchToken();
+    }
+  }, [code]);
 
   // Live dual-phase countdown update after mount only (prevents hydration mismatch)
   useEffect(() => {
@@ -50,48 +77,10 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
   }, []);
 
   useEffect(() => {
-    if (stage === "email" && emailInputRef.current) {
-      emailInputRef.current.focus();
-    }
-  }, [stage]);
-
-  // Focus on email input when component first loads
-  useEffect(() => {
     if (emailInputRef.current) {
       emailInputRef.current.focus();
     }
   }, []);
-
-  const onRequest = async () => {
-    console.log("onRequest called, email:", email, "requestOtp:", !!requestOtp);
-    if (!requestOtp) {
-      console.log("requestOtp not available");
-      return;
-    }
-    setLoading(true);
-    setMessage("");
-    const result = await requestOtp(email);
-    if (result?.ok) {
-      setStage("otp");
-      setMessage("Code sent. Check your email.");
-    } else {
-      setMessage(result?.message || "Failed to request code.");
-    }
-    setLoading(false);
-  };
-
-  const onVerify = async () => {
-    if (!verifyOtp) return;
-    setLoading(true);
-    setMessage("");
-    const result = await verifyOtp(email, otp);
-    if (result?.ok && result?.token) {
-      setToken?.(result.token);
-    } else {
-      setMessage(result?.message || "Invalid code.");
-    }
-    setLoading(false);
-  };
 
   return (
     <div className="start-screen">
@@ -152,52 +141,24 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
             className="email-input"
             style={{
               marginTop: "-20px",
+              alignItems: "center",
+            }}
+            onClick={() => {
+              window.open(
+                "https://slack.com/oauth/v2/authorize?client_id=2210535565.9361842154099&user_scope=users:read,users:read.email&redirect_uri=https://shiba.hackclub.dev",
+                "_blank",
+              );
             }}
           >
-            {stage === "email" ? (
-              <>
-                <input
-                  ref={emailInputRef}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="orpheus@hackclub.com"
-                  onKeyDown={(e) => {
-                    console.log("Key pressed:", e.key);
-                    if (e.key === "Enter") {
-                      console.log("Enter key pressed, calling onRequest");
-                      onRequest();
-                    }
-                  }}
-                />
-                <button
-                  onClick={onRequest}
-                  disabled={loading}
-                  className="signup-button"
-                >
-                  join the jam
-                </button>
-              </>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="Enter 6-digit code (email)"
-                  inputMode="numeric"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      onVerify();
-                    }
-                  }}
-                  maxLength={6}
-                />
-                <button onClick={onVerify} disabled={loading}>
-                  verify
-                </button>
-              </>
-            )}
+            <img
+              src="/slack.png"
+              style={{
+                height: "1em",
+                width: "1em",
+                marginRight: "8px",
+              }}
+            />
+            <p>Login with slack</p>
           </div>
         </div>
       </div>
@@ -211,32 +172,47 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
             <div className="info-screen-overlay"></div>
           </div>
 
-          <img src="/landing/sparkle.png" className="sparkle" style={{
-            top: "-40%",
-            animationDelay: "0s",
-          }}/>
+          <img
+            src="/landing/sparkle.png"
+            className="sparkle"
+            style={{
+              top: "-40%",
+              animationDelay: "0s",
+            }}
+          />
 
-          <img src="/landing/sparkle.png" className="sparkle" style={{
-            top: "-50%",
-            left: "10%",
-            width: "8%",
-            animationDelay: "0.3s",
-          }}/>
+          <img
+            src="/landing/sparkle.png"
+            className="sparkle"
+            style={{
+              top: "-50%",
+              left: "10%",
+              width: "8%",
+              animationDelay: "0.3s",
+            }}
+          />
 
+          <img
+            src="/landing/sparkle.png"
+            className="sparkle"
+            style={{
+              top: "-50%",
+              right: "0%",
+              width: "9%",
+              animationDelay: "0.5s",
+            }}
+          />
 
-          <img src="/landing/sparkle.png" className="sparkle" style={{
-            top: "-50%",
-            right: "0%",
-            width: "9%",
-            animationDelay: "0.5s",
-          }}/>
-
-          <img src="/landing/sparkle.png" className="sparkle" style={{
-            top: "-30%",
-            right: "8%",
-            width: "6%",
-            animationDelay: "0.8s",
-          }}/>
+          <img
+            src="/landing/sparkle.png"
+            className="sparkle"
+            style={{
+              top: "-30%",
+              right: "8%",
+              width: "6%",
+              animationDelay: "0.8s",
+            }}
+          />
 
           <div className="content">
             <div className="firetext online">
@@ -285,47 +261,49 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
               style={{
                 top: "180px",
                 left: "4%",
-              }}> 
-                <p>debug clicker (armand, 17)</p>
-                <img src="/landing/game_debugclicker.png" />
-              </a>
-
-            </div>
-
-
-              
-     
+              }}
+            >
+              <p>debug clicker (armand, 17)</p>
+              <img src="/landing/game_debugclicker.png" />
+            </a>
+          </div>
         </div>
 
-       
-
         <div className="taiko-divider">
-        <img src="/landing/sparkle.png" className="sparkle" style={{
-            top: "25%",
-            left: "3%",
-            width: "8%",
-            animationDelay: "0.2s",
+          <img
+            src="/landing/sparkle.png"
+            className="sparkle"
+            style={{
+              top: "25%",
+              left: "3%",
+              width: "8%",
+              animationDelay: "0.2s",
+            }}
+          />
 
-          }}/>
+          <img
+            src="/landing/sparkle.png"
+            className="sparkle"
+            style={{
+              top: "50%",
+              left: "1%",
+              width: "6%",
+              animationDelay: "0.7s",
+            }}
+          />
 
-        <img src="/landing/sparkle.png" className="sparkle" style={{
-            top: "50%",
-            left: "1%",
-            width: "6%",
-            animationDelay: "0.7s",
-          }}/>
+          <img
+            src="/landing/sparkle.png"
+            className="sparkle"
+            style={{
+              top: "50%",
+              right: "1%",
+              width: "6%",
+              animationDelay: "0.3s",
+            }}
+          />
 
-<img src="/landing/sparkle.png" className="sparkle" style={{
-            top: "50%",
-            right: "1%",
-            width: "6%",
-            animationDelay: "0.3s",
-          }}/>
-
-          
-
-
-        <img  src="/landing/taiko_divider.png"></img>
+          <img src="/landing/taiko_divider.png"></img>
           <div className="jumpy">
             <div
               className="jumpy-item"
@@ -387,8 +365,9 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
             </h1>
             <p>
               use SSS you earned to win a ticket to japan. fly to tokyo and
-              build an arcade with us, food covered, hotel covered, & flight stipends available. put your game into the
-              arcade and let the public try it!
+              build an arcade with us, food covered, hotel covered, & flight
+              stipends available. put your game into the arcade and let the
+              public try it!
             </p>
           </div>
         </div>
@@ -400,56 +379,7 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
           <div className="purple-circle" ref={circleRef}></div>
           <div className="faq-gradient-overlay"></div>
 
-          <div className="signup">
-            <p className="top-text english">HACK CLUB: sign up now.</p>
-            <div className="email-input">
-              {stage === "email" ? (
-                <>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        onRequest();
-                      }
-                    }}
-                    placeholder="orpheus@hackclub.com"
-                  />
-                  <button
-                    onClick={onRequest}
-                    disabled={loading}
-                    className="signup-button"
-                  >
-                    join the jam
-                  </button>
-                </>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="Enter 6-digit code (email)"
-                    inputMode="numeric"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        onVerify();
-                      }
-                    }}
-                    maxLength={6}
-                  />
-                  <button onClick={onVerify} disabled={loading}>
-                    verify
-                  </button>
-                </>
-              )}
-            </div>
-
-            <p className="top-text english" suppressHydrationWarning>{jamCountdownText || 'jam timeline loading...'}</p>
-          </div>
-
-          <div className="faq">
+          <div className="faq" style={{ marginTop: "10vh" }}>
             <div className="shiba-direct">
               <img src="/landing/shiba_direct.png" />
               <p>22 august · ?pm–?pm PST</p>
@@ -481,7 +411,6 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
             </details>
           </div>
         </div>
-  
       </div>
 
       <style jsx>{`
@@ -524,30 +453,29 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
           font-style: italic;
         }
 
-      .opening-video {
-      width: 65%;
-      aspect-ratio: 16/9;
-      border-radius: 32px;
-      border: 3px solid var(--yellow);
-  margin-top: -35px; /* overridden on mobile for better spacing */
-      }
-
-      .sparkle {
-      z-index: 10;
-      width: 10%;
-      position: absolute;
-      animation: sparkle-hover 1s infinite alternate ease-in-out;
-      }
-
-      @keyframes sparkle-hover {
-        0% {
-          transform: translateY(0);
+        .opening-video {
+          width: 65%;
+          aspect-ratio: 16/9;
+          border-radius: 32px;
+          border: 3px solid var(--yellow);
+          margin-top: -35px; /* overridden on mobile for better spacing */
         }
-        100% {
-          transform: translateY(-15px);
-        }
-      }
 
+        .sparkle {
+          z-index: 10;
+          width: 10%;
+          position: absolute;
+          animation: sparkle-hover 1s infinite alternate ease-in-out;
+        }
+
+        @keyframes sparkle-hover {
+          0% {
+            transform: translateY(0);
+          }
+          100% {
+            transform: translateY(-15px);
+          }
+        }
 
         .black-outline {
           text-shadow:
@@ -557,16 +485,18 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
             0 1px 0 #000;
         }
 
+        .email-input:hover {
+          cursor: pointer;
+        }
+
         .email-input {
-          border: 3px solid var(--yellow);
+          border: 3px solid white;
           border-radius: 24px;
           padding: 15px;
-          width: 45%;
           font-weight: bold;
           font-style: italic;
-
-          background-color: black;
-          background: linear-gradient(to bottom, #2b2b2b, #4c2e19);
+          color: white;
+          background-color: #4a154b;
 
           font-size: 1.2em;
 
@@ -867,6 +797,11 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
           z-index: 15;
         }
 
+        html body {
+          scroll-behavior: smooth;
+          background-color: black;
+        }
+
         .faq-area {
           position: relative;
           overflow: hidden;
@@ -890,7 +825,7 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
           left: 0;
           width: 100%;
           height: 100%;
-          background: linear-gradient(to bottom, black 0%, transparent 60%);
+          background: linear-gradient(to bottom, black 0%, transparent 50%);
           z-index: 3;
         }
 
@@ -906,7 +841,6 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
           border-radius: 50%;
           pointer-events: none;
           mix-blend-mode: color-dodge;
-          z-index: 2;
           transform: translate(-50%, -50%);
           display: none;
           transition:
@@ -1057,26 +991,25 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp }) {
             padding-bottom: 120px;
           }
 
+          .game-item {
+            position: relative;
+            width: 30%;
+            top: auto;
+            left: auto;
+            top: 0 !important;
+            left: 0 !important;
+          }
 
-        .game-item {
-          position: relative;
-          width: 30%;
-          top: auto;
-          left: auto;
-          top: 0 !important;
-          left: 0 !important;
-        }
+          .game-item p {
+            font-size: 0.8em;
+            padding: 0;
+          }
 
-        .game-item p {
-        font-size: 0.8em;
-        padding: 0;
-        }
-        
-        .taiko-divider > img {
-        width: 200%;
-        margin-top: -50%;
-        margin-bottom: -25%;
-        }
+          .taiko-divider > img {
+            width: 200%;
+            margin-top: -50%;
+            margin-bottom: -25%;
+          }
 
           .game-item {
             position: relative;
