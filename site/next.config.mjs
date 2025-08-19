@@ -3,7 +3,6 @@ const nextConfig = {
   reactStrictMode: true,
   // Disable Next.js dev UI indicators
   devIndicators: false,
-  output: "standalone",
   async rewrites() {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE || "";
     return [
