@@ -604,9 +604,21 @@ function DetailView({
   const [previewUrl, setPreviewUrl] = useState(game?.thumbnailUrl || "");
   const [GitHubURL, setGitHubURL] = useState(game?.GitHubURL || "");
   const [availableProjects, setAvailableProjects] = useState([]);
+  const [projectsWithTime, setProjectsWithTime] = useState([]);
   const [selectedProjectsCsv, setSelectedProjectsCsv] = useState(
     game?.HackatimeProjects || "",
   );
+
+  // Helper function to format time in hours and minutes
+  const formatTime = (minutes) => {
+    if (!minutes || minutes === 0) return '';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return mins > 0 ? `(${hours}h ${mins}m)` : `(${hours}h)`;
+    }
+    return `(${mins}m)`;
+  };
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [projectSearchTerm, setProjectSearchTerm] = useState("");
   const projectPickerContainerRef = useRef(null);
@@ -671,6 +683,7 @@ function DetailView({
   useEffect(() => {
     // Fetch Hackatime projects via server proxy to avoid CORS
     const fetchProjects = async () => {
+      console.log('Fetching projects for SlackId:', SlackId);
       if (!SlackId) return;
       try {
         const res = await fetch(
@@ -678,7 +691,11 @@ function DetailView({
         );
         const json = await res.json().catch(() => ({}));
         const names = Array.isArray(json?.projects) ? json.projects : [];
+        const projectsWithTimeData = Array.isArray(json?.projectsWithTime) ? json.projectsWithTime : [];
+        console.log('Hackatime API response:', json);
+        console.log('Projects with time:', projectsWithTimeData);
         setAvailableProjects(names);
+        setProjectsWithTime(projectsWithTimeData);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error(e);
@@ -1120,6 +1137,9 @@ function DetailView({
                   return filteredProjects.map((name, index) => {
                     const current = Array.from(new Set(selectedProjectsCsv.split(',').map((s) => s.trim()).filter(Boolean)));
                     const checked = current.includes(name);
+                    const projectTime = projectsWithTime.find(p => p.name === name)?.time || 0;
+                    const timeDisplay = formatTime(projectTime);
+                    console.log(`Project: ${name}, Time: ${projectTime}, Display: ${timeDisplay}`);
                     return (
                       <div
                         key={name}
@@ -1155,7 +1175,14 @@ function DetailView({
                           readOnly
                           style={{ pointerEvents: 'none' }}
                         />
-                        <span style={{ fontSize: 12, color: '#333' }}>{name}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                          <span style={{ fontSize: 12, color: '#333' }}>{name}</span>
+                          {timeDisplay && (
+                            <span style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}>
+                              {timeDisplay}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   });
