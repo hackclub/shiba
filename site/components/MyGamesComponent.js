@@ -199,13 +199,10 @@ export default function MyGamesComponent({
     // playSound("popSound.mp3");
 
     for (let i = 0; i < total; i++) {
-      const t = setTimeout(
-        () => {
-          if (cancelled) return;
-          setVisibleItemsCount((current) => Math.max(current, i + 1));
-        },
-        initialDelayMs + i * gapMs,
-      );
+      const t = setTimeout(() => {
+        if (cancelled) return;
+        setVisibleItemsCount((current) => Math.max(current, i + 1));
+      }, initialDelayMs + i * gapMs);
       timeouts.push(t);
     }
     return () => {
@@ -371,8 +368,8 @@ export default function MyGamesComponent({
                   onUpdated={(updated) => {
                     setMyGames((prev) =>
                       prev.map((g) =>
-                        g.id === updated.id ? { ...g, ...updated } : g,
-                      ),
+                        g.id === updated.id ? { ...g, ...updated } : g
+                      )
                     );
                   }}
                   SlackId={SlackId}
@@ -414,7 +411,9 @@ export default function MyGamesComponent({
               return (
                 <div
                   key={g.id || `${title}-${idx}`}
-                  className={`pop-seq-item${visibleItemsCount > idx ? " visible" : ""}`}
+                  className={`pop-seq-item${
+                    visibleItemsCount > idx ? " visible" : ""
+                  }`}
                   style={{ display: "flex", flexDirection: "column", gap: 6 }}
                   ref={(el) => {
                     itemsRefs.current[idx] = el;
@@ -480,7 +479,7 @@ export default function MyGamesComponent({
                           e.stopPropagation();
                           const confirmText = `DELETE ${title}`;
                           const input = window.prompt(
-                            `Type \"${confirmText}\" to confirm deletion`,
+                            `Type \"${confirmText}\" to confirm deletion`
                           );
                           if (input !== confirmText) return;
                           try {
@@ -507,7 +506,9 @@ export default function MyGamesComponent({
             })}
             <div
               key="create-new"
-              className={`pop-seq-item${visibleItemsCount > myGames.length ? " visible" : ""}`}
+              className={`pop-seq-item${
+                visibleItemsCount > myGames.length ? " visible" : ""
+              }`}
               style={{ display: "flex", flexDirection: "column", gap: 6 }}
               ref={(el) => {
                 itemsRefs.current[myGames.length] = el;
@@ -606,12 +607,12 @@ function DetailView({
   const [availableProjects, setAvailableProjects] = useState([]);
   const [projectsWithTime, setProjectsWithTime] = useState([]);
   const [selectedProjectsCsv, setSelectedProjectsCsv] = useState(
-    game?.HackatimeProjects || "",
+    game?.HackatimeProjects || ""
   );
 
   // Helper function to format time in hours and minutes
   const formatTime = (minutes) => {
-    if (!minutes || minutes === 0) return '';
+    if (!minutes || minutes === 0) return "";
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     if (hours > 0) {
@@ -637,14 +638,14 @@ function DetailView({
     () =>
       (postFiles || []).reduce(
         (sum, f) => sum + (typeof f.size === "number" ? f.size : 0),
-        0,
+        0
       ),
-    [postFiles],
+    [postFiles]
   );
   const overTotalLimit = totalAttachmentBytes > MAX_TOTAL_BYTES;
   const [buildFile, setBuildFile] = useState(null);
   const [uploadAuthToken, setUploadAuthToken] = useState(
-    process.env.NEXT_PUBLIC_UPLOAD_AUTH_TOKEN || "NeverTrustTheLiving#446",
+    process.env.NEXT_PUBLIC_UPLOAD_AUTH_TOKEN || "NeverTrustTheLiving#446"
   );
   const [userProfile, setUserProfile] = useState(null);
 
@@ -683,17 +684,24 @@ function DetailView({
   useEffect(() => {
     // Fetch Hackatime projects via server proxy to avoid CORS
     const fetchProjects = async () => {
-      console.log('Fetching projects for SlackId:', SlackId);
+      console.log("Fetching projects for SlackId:", SlackId);
       if (!SlackId) return;
       try {
         const res = await fetch(
           `/api/hackatimeProjects?slackId=${encodeURIComponent(SlackId)}`,
+          {
+            headers: {
+              Authorization: token,
+            },
+          }
         );
         const json = await res.json().catch(() => ({}));
         const names = Array.isArray(json?.projects) ? json.projects : [];
-        const projectsWithTimeData = Array.isArray(json?.projectsWithTime) ? json.projectsWithTime : [];
-        console.log('Hackatime API response:', json);
-        console.log('Projects with time:', projectsWithTimeData);
+        const projectsWithTimeData = Array.isArray(json?.projectsWithTime)
+          ? json.projectsWithTime
+          : [];
+        console.log("Hackatime API response:", json);
+        console.log("Projects with time:", projectsWithTimeData);
         setAvailableProjects(names);
         setProjectsWithTime(projectsWithTimeData);
       } catch (e) {
@@ -737,7 +745,7 @@ function DetailView({
       if (!SlackId) return;
       try {
         const res = await fetch(
-          `https://cachet.dunkirk.sh/users/${encodeURIComponent(SlackId)}`,
+          `https://cachet.dunkirk.sh/users/${encodeURIComponent(SlackId)}`
         );
         const json = await res.json().catch(() => ({}));
         if (!cancelled && json && (json.displayName || json.image)) {
@@ -1064,24 +1072,27 @@ function DetailView({
             style={{ flex: 1 }}
           />
           {/* Hackatime projects input with inline dropdown multi-select */}
-          <div ref={projectPickerContainerRef} style={{ position: 'relative', flex: 1 }}>
-                          <input
-                className="nice-input"
-                type="text"
-                value={selectedProjectsCsv}
-                readOnly
-                placeholder="Hackatime Projects"
-                style={{ width: '100%', paddingRight: 36 }}
-                onClick={() => {
-                  setShowProjectPicker((s) => !s);
-                  // Auto-focus the search input when opening the dropdown
-                  setTimeout(() => {
-                    if (projectSearchInputRef.current) {
-                      projectSearchInputRef.current.focus();
-                    }
-                  }, 0);
-                }}
-              />
+          <div
+            ref={projectPickerContainerRef}
+            style={{ position: "relative", flex: 1 }}
+          >
+            <input
+              className="nice-input"
+              type="text"
+              value={selectedProjectsCsv}
+              readOnly
+              placeholder="Hackatime Projects"
+              style={{ width: "100%", paddingRight: 36 }}
+              onClick={() => {
+                setShowProjectPicker((s) => !s);
+                // Auto-focus the search input when opening the dropdown
+                setTimeout(() => {
+                  if (projectSearchInputRef.current) {
+                    projectSearchInputRef.current.focus();
+                  }
+                }, 0);
+              }}
+            />
             {showProjectPicker && (
               <div
                 style={{
@@ -1107,65 +1118,87 @@ function DetailView({
                   value={projectSearchTerm}
                   onChange={(e) => setProjectSearchTerm(e.target.value)}
                   style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    marginBottom: '8px',
-                    boxSizing: 'border-box'
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                    marginBottom: "8px",
+                    boxSizing: "border-box",
                   }}
                   onClick={(e) => e.stopPropagation()}
                 />
-                
+
                 {/* Filtered projects */}
                 {(() => {
                   const filteredProjects = availableProjects
-                    .filter(name => name !== "Other") // Hide "Other" from the list
-                    .filter(name =>
-                      name.toLowerCase().includes(projectSearchTerm.toLowerCase())
+                    .filter((name) => name !== "Other") // Hide "Other" from the list
+                    .filter((name) =>
+                      name
+                        .toLowerCase()
+                        .includes(projectSearchTerm.toLowerCase())
                     );
-                  
+
                   if (filteredProjects.length === 0) {
                     return (
-                      <div style={{ opacity: 0.6, padding: '8px', textAlign: 'center' }}>
-                        {availableProjects.length === 0 ? 'No projects found' : 'No projects match your search'}
+                      <div
+                        style={{
+                          opacity: 0.6,
+                          padding: "8px",
+                          textAlign: "center",
+                        }}
+                      >
+                        {availableProjects.length === 0
+                          ? "No projects found"
+                          : "No projects match your search"}
                       </div>
                     );
                   }
-                  
+
                   return filteredProjects.map((name, index) => {
-                    const current = Array.from(new Set(selectedProjectsCsv.split(',').map((s) => s.trim()).filter(Boolean)));
+                    const current = Array.from(
+                      new Set(
+                        selectedProjectsCsv
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      )
+                    );
                     const checked = current.includes(name);
-                    const projectTime = projectsWithTime.find(p => p.name === name)?.time || 0;
+                    const projectTime =
+                      projectsWithTime.find((p) => p.name === name)?.time || 0;
                     const timeDisplay = formatTime(projectTime);
-                    console.log(`Project: ${name}, Time: ${projectTime}, Display: ${timeDisplay}`);
+                    console.log(
+                      `Project: ${name}, Time: ${projectTime}, Display: ${timeDisplay}`
+                    );
                     return (
                       <div
                         key={name}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
+                          display: "flex",
+                          alignItems: "center",
                           gap: 8,
-                          padding: '6px 8px',
-                          cursor: 'pointer',
-                          borderTop: index === 0 ? 'none' : '1px solid #eee',
+                          padding: "6px 8px",
+                          cursor: "pointer",
+                          borderTop: index === 0 ? "none" : "1px solid #eee",
                         }}
                         onClick={(e) => {
                           // make entire row toggle
                           const set = new Set(current);
-                          if (checked) set.delete(name); else set.add(name);
-                          setSelectedProjectsCsv(Array.from(set).join(', '));
+                          if (checked) set.delete(name);
+                          else set.add(name);
+                          setSelectedProjectsCsv(Array.from(set).join(", "));
                         }}
                         role="checkbox"
                         aria-checked={checked}
                         tabIndex={0}
                         onKeyDown={(e) => {
-                          if (e.key === ' ' || e.key === 'Enter') {
+                          if (e.key === " " || e.key === "Enter") {
                             e.preventDefault();
                             const set = new Set(current);
-                            if (checked) set.delete(name); else set.add(name);
-                            setSelectedProjectsCsv(Array.from(set).join(', '));
+                            if (checked) set.delete(name);
+                            else set.add(name);
+                            setSelectedProjectsCsv(Array.from(set).join(", "));
                           }
                         }}
                       >
@@ -1173,12 +1206,26 @@ function DetailView({
                           type="checkbox"
                           checked={checked}
                           readOnly
-                          style={{ pointerEvents: 'none' }}
+                          style={{ pointerEvents: "none" }}
                         />
-                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                          <span style={{ fontSize: 12, color: '#333' }}>{name}</span>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            flex: 1,
+                          }}
+                        >
+                          <span style={{ fontSize: 12, color: "#333" }}>
+                            {name}
+                          </span>
                           {timeDisplay && (
-                            <span style={{ fontSize: 10, color: '#666', fontStyle: 'italic' }}>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: "#666",
+                                fontStyle: "italic",
+                              }}
+                            >
                               {timeDisplay}
                             </span>
                           )}
@@ -1312,7 +1359,7 @@ function DetailView({
 
                 const items = Array.from(e.clipboardData.items);
                 const imageItem = items.find((item) =>
-                  item.type.startsWith("image/"),
+                  item.type.startsWith("image/")
                 );
 
                 if (imageItem) {
@@ -1323,7 +1370,7 @@ function DetailView({
                     // Check file size (5MB limit)
                     if (file.size > 5 * 1024 * 1024) {
                       alert(
-                        "Pasted image is too large. Please use an image under 5MB.",
+                        "Pasted image is too large. Please use an image under 5MB."
                       );
                       return;
                     }
@@ -1377,7 +1424,7 @@ function DetailView({
                         title="Remove"
                         onClick={() => {
                           setPostFiles((prev) =>
-                            prev.filter((_, i) => i !== idx),
+                            prev.filter((_, i) => i !== idx)
                           );
                           URL.revokeObjectURL(url);
                         }}
@@ -1408,7 +1455,7 @@ function DetailView({
                       // Validate file extension
                       if (file && !file.name.toLowerCase().endsWith(".zip")) {
                         alert(
-                          "❌ Invalid file format!\n\nPlease select a .zip file from your Godot HTML5 export.\n\nIn Godot: Project → Export → Web → Export Project → Export as HTML5",
+                          "❌ Invalid file format!\n\nPlease select a .zip file from your Godot HTML5 export.\n\nIn Godot: Project → Export → Web → Export Project → Export as HTML5"
                         );
                         e.target.value = "";
                         setBuildFile(null);
@@ -1424,7 +1471,7 @@ function DetailView({
                     onClick={() => {
                       console.log(
                         "Build file button clicked, ref exists:",
-                        !!buildFileInputRef.current,
+                        !!buildFileInputRef.current
                       );
                       buildFileInputRef.current?.click();
                     }}
@@ -1452,11 +1499,11 @@ function DetailView({
                       if (f) {
                         const validTypes = ["image/", "video/", "audio/"];
                         const isValidType = validTypes.some((type) =>
-                          f.type.startsWith(type),
+                          f.type.startsWith(type)
                         );
                         if (!isValidType) {
                           alert(
-                            "❌ Invalid file type!\n\nPlease select an image, video, or audio file for your Shiba Moment.",
+                            "❌ Invalid file type!\n\nPlease select an image, video, or audio file for your Shiba Moment."
                           );
                           e.target.value = "";
                           return;
@@ -1473,7 +1520,7 @@ function DetailView({
                     onClick={() => {
                       console.log(
                         "Moments file button clicked, ref exists:",
-                        !!momentsFileInputRef.current,
+                        !!momentsFileInputRef.current
                       );
                       momentsFileInputRef.current?.click();
                     }}
@@ -1493,7 +1540,9 @@ function DetailView({
               >
                 <button
                   type="button"
-                  className={`moment-type-option${postType === "moment" ? " active" : ""}`}
+                  className={`moment-type-option${
+                    postType === "moment" ? " active" : ""
+                  }`}
                   aria-selected={postType === "moment"}
                   onClick={() => {
                     setPostType("moment");
@@ -1506,7 +1555,9 @@ function DetailView({
                 </button>
                 <button
                   type="button"
-                  className={`moment-type-option${postType === "ship" ? " active" : ""}`}
+                  className={`moment-type-option${
+                    postType === "ship" ? " active" : ""
+                  }`}
                   aria-selected={postType === "ship"}
                   onClick={() => {
                     setPostType("ship");
@@ -1527,26 +1578,26 @@ function DetailView({
                   if (!token || !game?.id || !postContent.trim()) return;
                   if (postType === "moment" && postFiles.length === 0) {
                     alert(
-                      "Add a media file (image/video/audio) of what you added in this update",
+                      "Add a media file (image/video/audio) of what you added in this update"
                     );
                     return;
                   }
                   if (postType === "ship") {
                     if (!isProfileComplete) {
                       alert(
-                        "You must finish filling out your profile before you can upload your demo. See your profile on the top left corner of the main Shiba Homescreen",
+                        "You must finish filling out your profile before you can upload your demo. See your profile on the top left corner of the main Shiba Homescreen"
                       );
                       return;
                     }
                     if (!game?.GitHubURL || game.GitHubURL.trim() === "") {
                       alert(
-                        "You must update your game to have a GitHub Repository to upload your demo. All games in Shiba must be open-sourced.",
+                        "You must update your game to have a GitHub Repository to upload your demo. All games in Shiba must be open-sourced."
                       );
                       return;
                     }
                     if (!buildFile || !uploadAuthToken) {
                       alert(
-                        "Zip your godot web build and add it here with a msg of what you added!",
+                        "Zip your godot web build and add it here with a msg of what you added!"
                       );
                       return;
                     }
@@ -1568,11 +1619,13 @@ function DetailView({
                         if (uploadResp.validationError && uploadResp.details) {
                           // Show detailed validation error with guidance
                           alert(
-                            `Upload Failed: ${uploadResp.error}\n\n${uploadResp.details}`,
+                            `Upload Failed: ${uploadResp.error}\n\n${uploadResp.details}`
                           );
                         } else {
                           setPostMessage(
-                            `Upload failed: ${uploadResp.error || "Unknown error"}`,
+                            `Upload failed: ${
+                              uploadResp.error || "Unknown error"
+                            }`
                           );
                         }
                         setIsPosting(false);
@@ -1644,7 +1697,7 @@ function DetailView({
                         } catch (syncError) {
                           console.error(
                             "Failed to sync with YSWSDB:",
-                            syncError,
+                            syncError
                           );
                           // Don't fail the post if sync fails
                         }
@@ -1697,10 +1750,10 @@ function DetailView({
                     ? "Shipping…"
                     : "Posting…"
                   : overTotalLimit
-                    ? "Screenshots exceed 5MB"
-                    : postType === "ship"
-                      ? "Ship"
-                      : "Post"}
+                  ? "Screenshots exceed 5MB"
+                  : postType === "ship"
+                  ? "Ship"
+                  : "Post"}
               </button>
             </div>
           </div>
@@ -1810,7 +1863,7 @@ function DetailView({
                       onClick={async () => {
                         const confirmText = `DELETE POST`;
                         const input = window.prompt(
-                          `Type "${confirmText}" to confirm deletion`,
+                          `Type "${confirmText}" to confirm deletion`
                         );
                         if (input !== confirmText) return;
 
@@ -1824,7 +1877,7 @@ function DetailView({
                           if (res.ok && data?.ok) {
                             // Remove the post from local state
                             const updatedPosts = game.posts.filter(
-                              (_, index) => index !== pIdx,
+                              (_, index) => index !== pIdx
                             );
                             onUpdated?.({ id: game.id, posts: updatedPosts });
                           } else {
@@ -1870,9 +1923,7 @@ function DetailView({
           border-radius: 10px;
           overflow: hidden;
           background: rgba(255, 255, 255, 0.75);
-          transition:
-            border-color 120ms ease,
-            box-shadow 120ms ease,
+          transition: border-color 120ms ease, box-shadow 120ms ease,
             background 120ms ease;
         }
         .moments-composer.drag-active {
@@ -2037,9 +2088,7 @@ function DetailView({
           letter-spacing: 0.2px;
           background: linear-gradient(180deg, #ff8ec3 0%, #ff6fa5 100%);
           transform: translateY(0);
-          transition:
-            transform 120ms ease,
-            opacity 120ms ease;
+          transition: transform 120ms ease, opacity 120ms ease;
         }
         .big-cta-btn:hover {
           transform: translateY(-1px);
