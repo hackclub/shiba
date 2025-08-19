@@ -11,8 +11,7 @@ import React, { useState, useRef } from "react";
  * - apiBase: string (optional) override API base URL; defaults to NEXT_PUBLIC_API_BASE or same-origin
  * - style: React.CSSProperties (optional)
  */
-export default function PlayGameComponent({ gameId, width = "100%", apiBase, style, gameName, thumbnailUrl, token, onPlayCreated }) {
-  const base = apiBase || process.env.NEXT_PUBLIC_API_BASE || "";
+export default function PlayGameComponent({ gameId, width = "100%", style, gameName, thumbnailUrl, token, onPlayCreated }) {
   const normalizedWidth = typeof width === "number" ? `${width}` : width;
   const [started, setStarted] = useState(false);
   const [animating, setAnimating] = useState(false);
@@ -23,7 +22,7 @@ export default function PlayGameComponent({ gameId, width = "100%", apiBase, sty
     return <div>Missing gameId.</div>;
   }
 
-  const url = `${base}/play/${encodeURIComponent(gameId)}/`;
+  const url = `/play/${encodeURIComponent(gameId)}/`;
 
   const handleFullScreen = () => {
     if (iframeRef.current) {

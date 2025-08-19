@@ -10,7 +10,7 @@
 //it's ok that this is public, it's for game upload client-side.  (From Thomas)
 const HARDCODED_UPLOAD_TOKEN = "NeverTrustTheLiving#446";
 
-export async function uploadGame({ file, name, token, apiBase }) {
+export async function uploadGame({ file, name, token }) {
   if (!file) return { ok: false, error: "Missing file" };
   if (!name) return { ok: false, error: "Missing name" };
 
@@ -20,7 +20,6 @@ export async function uploadGame({ file, name, token, apiBase }) {
 
   if (!effectiveToken) return { ok: false, error: "Missing token" };
 
-  const base = apiBase || process.env.NEXT_PUBLIC_API_BASE || "";
   const slug = slugify(name);
   const dt = new Date();
   const y = String(dt.getFullYear());
@@ -38,7 +37,7 @@ export async function uploadGame({ file, name, token, apiBase }) {
   fd.append("token", effectiveToken);
 
   try {
-    const res = await fetch(`${base}/api/uploadGame`, {
+    const res = await fetch(`/api/uploadGame`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${effectiveToken}`,
