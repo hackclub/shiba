@@ -17,6 +17,7 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
   const [devlogMessage, setDevlogMessage] = useState("");
   const [isDragActive, setIsDragActive] = useState(false);
   const [createdGameId, setCreatedGameId] = useState(null);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -43,6 +44,7 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
       setIsPostingDevlog(false);
       setDevlogMessage("");
       setCompletingOnboarding(false);
+      setHasScrolledToBottom(false);
       const t = setTimeout(() => {
         setShouldRender(false);
         setIsExiting(false);
@@ -67,7 +69,7 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
       const data = await res.json().catch(() => ({}));
       if (res.ok && data?.ok) {
         setCreatedGameId(data.game?.id);
-        setOnboardingStage(8);
+        setOnboardingStage(9);
       } else {
         console.error('Failed to create game:', data?.message);
         // Reset creating state on error so user can try again
@@ -100,7 +102,7 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
         setDevlogContent("");
         setDevlogMessage("Posted!");
         setTimeout(() => setDevlogMessage(""), 2000);
-        setOnboardingStage(9);
+        setOnboardingStage(10);
       } else {
         setDevlogMessage(data?.message || "Failed to post");
         // Reset posting state on error so user can try again
@@ -173,30 +175,34 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
             playSound?.("next.mp3");
             setOnboardingStage(5);
             break;
-          case 5: // Continue to Extension
+          case 5: // Continue to Hour Botting Agreement
             playSound?.("next.mp3");
             setOnboardingStage(6);
             break;
-          case 6: // Continue to Create Game
+          case 6: // Continue to Extension
             playSound?.("next.mp3");
             setOnboardingStage(7);
             break;
-          case 7: // Create Game
+          case 7: // Continue to Create Game
+            playSound?.("next.mp3");
+            setOnboardingStage(8);
+            break;
+          case 8: // Create Game
             if (createdGameId) {
               // If game already exists, continue to next stage
               playSound?.("next.mp3");
-              setOnboardingStage(8);
+              setOnboardingStage(9);
             } else if (gameName.trim() && !creatingGame) {
               // If no game exists yet, create one
               handleCreateGame();
             }
             break;
-          case 8: // Post Devlog
+          case 9: // Post Devlog
             if (devlogContent.trim() && !isPostingDevlog) {
               handlePostDevlog();
             }
             break;
-          case 9: // Complete Onboarding
+          case 10: // Complete Onboarding
             if (!completingOnboarding) {
               handleCompleteOnboarding();
             }
@@ -207,7 +213,7 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onboardingStage, gameName, devlogContent, creatingGame, isPostingDevlog, completingOnboarding, createdGameId, playSound, token, onCompleted]);
+  }, [isOpen, onboardingStage, gameName, devlogContent, creatingGame, isPostingDevlog, completingOnboarding, createdGameId, playSound, token, onCompleted, handleCreateGame, handlePostDevlog, handleCompleteOnboarding]);
 
   if (!shouldRender) return null;
 
@@ -264,7 +270,7 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
               onClick={() => {
                 playSound?.("prev.mp3");
                 // Reset states when going back from post creation stage
-                if (onboardingStage === 9) {
+                if (onboardingStage === 10) {
                   setDevlogContent("");
                   setDevlogMessage("");
                 }
@@ -307,7 +313,7 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
               overflow: "hidden"
             }}>
               <div style={{
-                width: `${((onboardingStage + 1) / 10) * 100}%`,
+                width: `${((onboardingStage + 1) / 11) * 100}%`,
                 height: "100%",
                 backgroundColor: "var(--yellow)",
                 transition: "width 0.3s ease"
@@ -946,8 +952,144 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
           </div>
         )}
         
-        {/* Stage 6: Download Extension & Connect Hackatime */}
+        {/* Stage 6: Hour Botting Agreement */}
         {onboardingStage === 6 && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flex: 1,
+              padding: "20px",
+            }}
+          >
+            <div style={{ textAlign: "center", maxWidth: "500px" }}>
+              <h1 style={{ 
+                margin: 0, 
+                color: "black", 
+                fontSize: "28px", 
+                fontWeight: "bold", 
+                marginBottom: "16px",
+                letterSpacing: "1px"
+              }}>
+                Hackatime Integrity Agreement
+              </h1>
+              
+              <div 
+                onScroll={(e) => {
+                  const { scrollTop, scrollHeight, clientHeight } = e.target;
+                  if (scrollTop + clientHeight >= scrollHeight - 5) {
+                    setHasScrolledToBottom(true);
+                  }
+                }}
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  border: "2px solid #343a40",
+                  borderRadius: "8px",
+                  padding: "20px",
+                  marginBottom: "16px",
+                  fontFamily: "Georgia, serif",
+                  fontSize: "16px",
+                  lineHeight: "1.6",
+                  textAlign: "left",
+                  maxHeight: "160px",
+                  overflowY: "auto"
+                }}
+              >
+                <p style={{ margin: "0 0 16px 0", fontWeight: "bold" }}>
+                  WHEREAS, hours logged constitute the fundamental economic input to the Shiba ecosystem;
+                </p>
+                
+                <p style={{ margin: "0 0 16px 0" }}>
+                  AND WHEREAS, The Hack Foundation (Hack Club) maintains strict integrity standards for time tracking;
+                </p>
+                
+                <p style={{ margin: "0 0 16px 0" }}>
+                  NOW THEREFORE, you hereby acknowledge and agree that any attempt to deceive The Hack Foundation through automated time logging, scripted heartbeat emissions, repeated fake key presses, UI manipulation, or any other form of time tracking manipulation (including but not limited to performing small actions in the interface to trigger fake heartbeats) shall result in immediate and permanent termination of your access to Hackatime and all associated programs, including but not limited to Shiba Arcade.
+                </p>
+                
+                <p style={{ margin: "0 0 16px 0", fontWeight: "bold" }}>
+                  FURTHER, you understand that our systems are specifically trained to detect automated heartbeat emissions and that such detection will result in immediate account termination.
+                </p>
+                
+                <p style={{ margin: "0", fontStyle: "italic" }}>
+                  By proceeding, you acknowledge full understanding of these terms and accept all consequences of violation.
+                </p>
+                
+                <div style={{ 
+                  marginTop: "20px", 
+                  padding: "16px", 
+                  backgroundColor: "#e9ecef", 
+                  border: "1px solid #dee2e6", 
+                  borderRadius: "6px",
+                  borderLeft: "4px solid #007bff"
+                }}>
+                  <p style={{ 
+                    margin: "0 0 8px 0", 
+                    fontWeight: "bold", 
+                    fontSize: "14px",
+                    color: "#495057"
+                  }}>
+                    TL;DR:
+                  </p>
+                  <p style={{ 
+                    margin: "0", 
+                    fontSize: "14px", 
+                    lineHeight: "1.4",
+                    color: "#495057"
+                  }}>
+                    Don't cheat the time tracking system. No bots, no fake key presses, no UI manipulation. If you do, you'll be banned from Hackatime and Shiba permanently.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: "flex", justifyContent: "center", width: "100%", position: "relative" }}>
+              <button
+                onClick={() => {
+                  if (hasScrolledToBottom) {
+                    playSound?.("next.mp3");
+                    setOnboardingStage(7);
+                  }
+                }}
+                disabled={!hasScrolledToBottom}
+                title={!hasScrolledToBottom ? "Please read the entire agreement before agreeing" : ""}
+                style={{
+                  appearance: "none",
+                  border: "3px solid #343a40",
+                  background: hasScrolledToBottom ? "#28a745" : "#6c757d",
+                  color: "white",
+                  borderRadius: "8px",
+                  padding: "16px 32px",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  cursor: hasScrolledToBottom ? "pointer" : "not-allowed",
+                  transition: "all 0.2s ease",
+                  letterSpacing: "1px",
+                  opacity: hasScrolledToBottom ? 1 : 0.6
+                }}
+                onMouseEnter={(e) => {
+                  if (hasScrolledToBottom) {
+                    e.target.style.background = "#218838";
+                    e.target.style.borderColor = "#218838";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (hasScrolledToBottom) {
+                    e.target.style.background = "#28a745";
+                    e.target.style.borderColor = "#28a745";
+                  }
+                }}
+              >
+                Agree to Terms
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Stage 7: Download Extension & Connect Hackatime */}
+        {onboardingStage === 7 && (
           <div
             style={{
               display: "flex",
@@ -1051,7 +1193,7 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
                 <button
                   onClick={() => {
                   playSound?.("next.mp3");
-                  setOnboardingStage(7);
+                  setOnboardingStage(8);
                 }}
                   style={{
                     appearance: "none",
@@ -1085,8 +1227,8 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
           </div>
         )}
         
-        {/* Stage 7: Create Your Game */}
-        {onboardingStage === 7 && (
+        {/* Stage 8: Create Your Game */}
+        {onboardingStage === 8 && (
           <div
             style={{
               display: "flex",
@@ -1151,7 +1293,7 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
                 <button
                   onClick={() => {
                     playSound?.("next.mp3");
-                    setOnboardingStage(8);
+                    setOnboardingStage(9);
                   }}
                   style={{
                     appearance: "none",
@@ -1221,8 +1363,8 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
           </div>
         )}
         
-        {/* Stage 8: Log your first Devlog */}
-        {onboardingStage === 8 && (
+        {/* Stage 9: Log your first Devlog */}
+        {onboardingStage === 9 && (
           <div
             style={{
               display: "flex",
@@ -1312,8 +1454,8 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
           </div>
         )}
         
-        {/* Stage 9: You're done! */}
-        {onboardingStage === 9 && (
+        {/* Stage 10: You're done! */}
+        {onboardingStage === 10 && (
           <div
             style={{
               display: "flex",
