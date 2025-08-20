@@ -4,9 +4,11 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -113,8 +115,60 @@ func sanitizeForAirtableFormula(input string) string {
 		return r
 	}, input)
 	input = strings.ReplaceAll(input, `\`, `\\`)
-	input = strings.ReplaceAll(input, `"`, `\"`)
+	input = strings.ReplaceAll(input, `"`, `\\"`)
 	return input
+}
+
+// i barely use airtable so this is mostly a guess? im trying to be as minimal as possible
+type airtableListResponse struct {
+	Records []struct {
+		Fields map[string]interface{} `json:"fields"`
+		ID     string                 `json:"id"`
+	} `json:"records"`
+}
+
+// idk just find their token in airtable
+func airtableFindUserByToken(srv *structs.Server, token string) (*airtableListResponse, error) {
+	if srv.AirtableAPIKey == "" || srv.AirtableBaseID == "" {
+		return nil, fmt.Errorf("airtable not configured")
+	}
+	client := &http.Client{}
+
+	fields := []string{"token", "Token"}
+	for _, field := range fields {
+		params := url.Values{}
+		params.Set("filterByFormula", fmt.Sprintf("{%s} = \"%s\"", field, token))
+		params.Set("pageSize", "1")
+		params.Add("fields[]", "Email")
+		params.Add("fields[]", "user_id")
+
+		reqURL := fmt.Sprintf("https://api.airtable.com/v0/%s/%s?%s",
+			url.PathEscape(srv.AirtableBaseID), url.PathEscape("Users"), params.Encode())
+		req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+srv.AirtableAPIKey)
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			b, _ := io.ReadAll(resp.Body)
+			return nil, fmt.Errorf("airtable error %d: %s", resp.StatusCode, string(b))
+		}
+		var out airtableListResponse
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			return nil, err
+		}
+		if len(out.Records) > 0 {
+			return &out, nil
+		}
+	}
+	return &airtableListResponse{Records: nil}, nil
 }
 
 func GameUploadHandler(srv *structs.Server) http.HandlerFunc {
@@ -130,9 +184,7 @@ func GameUploadHandler(srv *structs.Server) http.HandlerFunc {
 		}
 
 		// check if the auth bearer is a valid user token in airtable
-		// TEMPORARILY DISABLED - Airtable auth check commented out
-
-		/*
+		// and the airtable auth was commented out why??
 		authHeader := r.Header.Get("Authorization")
 
 		if authHeader == "" {
@@ -140,7 +192,6 @@ func GameUploadHandler(srv *structs.Server) http.HandlerFunc {
 			return
 		}
 
-		// Check if it's a Bearer token
 		if strings.HasPrefix(authHeader, "Bearer ") {
 			authHeader = strings.TrimPrefix(authHeader, "Bearer ")
 		}
@@ -151,33 +202,21 @@ func GameUploadHandler(srv *structs.Server) http.HandlerFunc {
 		
 		log.Printf("Attempting to validate token: %s", sanitizedHeader)
 
-		// Try different field names for token
-		var records, err = srv.AirtableBaseTable.GetRecords().WithFilterFormula(
-			`{token} = "`+sanitizedHeader+`"`,
-		).MaxRecords(1).ReturnFields("Email", "user_id", "token").Do()
-
-		// If no records found, try alternative field names
-		if err == nil && len(records.Records) == 0 {
-			log.Printf("No records found with 'token' field, trying 'Token' field")
-			records, err = srv.AirtableBaseTable.GetRecords().WithFilterFormula(
-				`{Token} = "`+sanitizedHeader+`"`,
-			).MaxRecords(1).ReturnFields("Email", "user_id", "Token").Do()
-		}
-
+		airOut, err := airtableFindUserByToken(srv, sanitizedHeader)
 		if err != nil {
 			log.Printf("Airtable query error: %v", err)
 			http.Error(w, "Failed to validate token..", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("Found %d records for token", len(records.Records))
+		log.Printf("Found %d records for token", len(airOut.Records))
 
-		if len(records.Records) == 0 {
+		if len(airOut.Records) == 0 {
 			log.Printf("No records found for token: %s", sanitizedHeader)
 			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
 			return
 		}
-		*/
+		
 
 		file, _, err := r.FormFile("file")
 		if err != nil {

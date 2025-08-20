@@ -18,16 +18,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
-	"github.com/mehanizm/airtable"
 )
 
 func NewServer(s3c *s3.Client, localStorageDir, gamesPrefix string) *structs.Server {
 	return &structs.Server{
-		S3Client: s3c,
-		AirtableClient: airtable.NewClient(
-			os.Getenv("AIRTABLE_API_KEY"),
-		),
-		AdminToken: os.Getenv("ADMIN_TOKEN"),
+		S3Client:       s3c,
+		AirtableAPIKey: os.Getenv("AIRTABLE_API_KEY"),
+		AirtableBaseID: os.Getenv("AIRTABLE_BASE_ID"), // why are we using airtable? postgres on top!!!
+		AdminToken:     os.Getenv("ADMIN_TOKEN"),
 	}
 }
 
@@ -90,12 +88,9 @@ func main() {
 	}
 
 	srv := NewServer(s3Client, "./local_storage", "games")
-
-	srv.AirtableBaseTable = srv.AirtableClient.GetTable(os.Getenv("AIRTABLE_BASE_ID"), "Users")
-	if srv.AirtableBaseTable == nil {
-		log.Fatal("Failed to get Airtable base table")
+	if srv.AirtableAPIKey == "" || srv.AirtableBaseID == "" {
+		log.Fatal("AIRTABLE_API_KEY and AIRTABLE_BASE_ID must be set")
 	}
-	log.Println("Adding the airtable base...")
 
 	go func() {
 		ticker := time.NewTicker(10 * time.Minute) // interval
@@ -117,7 +112,7 @@ func main() {
 	// Cors setup
 
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   []string{"https://shiba.hackclub.com", "https://shiba.hackclub.dev"}, // why were we letting all origins in? 
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,
