@@ -143,23 +143,10 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
   // Play background music when modal opens
   useEffect(() => {
     if (isOpen && !isMuted) {
-      const timer = setTimeout(() => {
-        try {
-          playClip?.("WelcomeToShibaArcade.mp3");
-        } catch (e) {
-          console.error("Failed to play audio:", e);
-        }
-      }, 500);
-      return () => {
-        clearTimeout(timer);
-        try {
-          stopAll?.();
-        } catch (e) {
-          console.error("Failed to stop audio:", e);
-        }
-      };
+      // Stop any existing audio and play the Zelda song
+      try { stopAll?.(); } catch (_) {}
+      playClip?.("zeldaSong.mp3");
     }
-    return undefined;
   }, [isOpen, playClip, stopAll, isMuted]);
 
   // Handle Enter key for navigation

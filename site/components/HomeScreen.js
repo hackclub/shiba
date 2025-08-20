@@ -1345,10 +1345,10 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
   // When selected game changes, play its clip immediately using the preloaded element
   useEffect(() => {
     const clip = games[selectedGame]?.gameClipAudio;
-    if (clip) {
+    if (clip && !isMuted) {
       playClip(clip);
     }
-  }, [selectedGame]);
+  }, [selectedGame, isMuted]);
 
   useEffect(() => {
     const updateTokyoTime = () => {
@@ -1526,24 +1526,20 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
           <p style={{ fontFamily: "GT Maru", fontWeight: "bold" }}>
             Shiba Arcade
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <button 
               onClick={toggleMute}
-              aria-label={isMuted ? "Unmute audio" : "Mute audio"}
-              title={isMuted ? "Unmute audio" : "Mute audio"}
               style={{
-                background: "transparent",
+                background: "none",
                 border: "none",
                 cursor: "pointer",
+                padding: "4px",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                padding: 4,
-                opacity: 0.7,
-                transition: "opacity 0.2s ease",
+                justifyContent: "center"
               }}
-              onMouseEnter={(e) => e.target.style.opacity = 1}
-              onMouseLeave={(e) => e.target.style.opacity = 0.7}
+              aria-label={isMuted ? "Unmute Music" : "Mute Music"}
+              title={isMuted ? "Unmute Music" : "Mute Music"}
             >
               {isMuted ? (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1582,6 +1578,7 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
             isEventsOpen={isEventsOpen}
             isOnboardingOpen={isOnboardingOpen}
             isMuted={isMuted}
+            playClip={playClip}
           />
           <GameDetails game={games[selectedGame]} />
         </div>

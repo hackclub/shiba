@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import GameCard from "@/components/GameCard";
 
-export default function GameCarousel({ games, onSelect, playSound, playClip, setAppOpen, stopAll, selectedIndex: controlledIndex, isProfileOpen, isEventsOpen, isOnboardingOpen, isMuted }) {
+export default function GameCarousel({ games, onSelect, playSound, playClip, setAppOpen, stopAll, selectedIndex: controlledIndex, isProfileOpen, isEventsOpen, isOnboardingOpen }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const numGames = games?.length ?? 0;
 
@@ -39,7 +39,7 @@ export default function GameCarousel({ games, onSelect, playSound, playClip, set
         }
       }
     },
-    [embla, playSound, setAppOpen, games, selectedIndex, isProfileOpen, isEventsOpen, isOnboardingOpen, stopAll]
+    [embla, playSound, setAppOpen, games, selectedIndex, isProfileOpen, isEventsOpen, isOnboardingOpen]
   );
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export default function GameCarousel({ games, onSelect, playSound, playClip, set
       setSelectedIndex(idx);
       if (onSelect) onSelect(idx);
       const clip = games?.[idx]?.gameClipAudio;
-      if (clip) {
+      if (clip && !isMuted) {
         playClip?.(clip);
       }
     };
@@ -71,7 +71,7 @@ export default function GameCarousel({ games, onSelect, playSound, playClip, set
     return () => {
       embla.off("select", onSelectInternal);
     };
-  }, [embla, onSelect, games, playClip]);
+  }, [embla, onSelect, games, playClip, isMuted]);
 
   // Pause music when any modal is open
   useEffect(() => {
@@ -113,67 +113,64 @@ export default function GameCarousel({ games, onSelect, playSound, playClip, set
   );
 
   return (
-    <div style={{ display: "flex", width: "100%", justifyContent: "center", alignItems: "center" }}>
-      <div ref={viewportRef} style={{ overflow: "hidden", width: "90vw", maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          {games.map((game, idx) => {
-            const isActive = idx === selectedIndex;
-            // Handle clicking any card: if active open game, otherwise scroll toward it (choose direction) and play appropriate sound
-            const handleClick = () => {
-              if (!embla) return;
-              const current = embla.selectedScrollSnap();
-              if (idx === current) {
-                // Open the active game
-                try { stopAll?.(); } catch (_) {}
-                setAppOpen?.(game.name);
-                return;
-              }
-              const total = games.length;
-              // Compute forward (next) distance and backward (prev) distance in circular list
-              const forward = (idx - current + total) % total; // steps if moving next
-              const backward = (current - idx + total) % total; // steps if moving prev
-              // Choose direction based on shorter distance; tie -> treat as forward
-              if (forward <= backward) {
-                playSound?.("next.mp3");
-              } else {
-                playSound?.("prev.mp3");
-              }
-              embla.scrollTo(idx);
-            };
-            return (
-              <div
-                key={game.name}
-                style={{ flex: "0 0 33.3333%", display: "flex", justifyContent: "center", alignItems: "center", padding: "2vw" }}
-              >
+    <>
+      <div style={{ display: "flex", width: "100%", justifyContent: "center", alignItems: "center" }}>
+        <div ref={viewportRef} style={{ overflow: "hidden", width: "90vw", maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {games.map((game, idx) => {
+              const isActive = idx === selectedIndex;
+              // Handle clicking any card: if active open game, otherwise scroll toward it (choose direction) and play appropriate sound
+              const handleClick = () => {
+                if (!embla) return;
+                const current = embla.selectedScrollSnap();
+                if (idx === current) {
+                  // Open the active game
+                  try { stopAll?.(); } catch (_) {}
+                  setAppOpen?.(game.name);
+                  return;
+                }
+                const total = games.length;
+                // Compute forward (next) distance and backward (prev) distance in circular list
+                const forward = (idx - current + total) % total; // steps if moving next
+                const backward = (current - idx + total) % total; // steps if moving prev
+                // Choose direction based on shorter distance; tie -> treat as forward
+                if (forward <= backward) {
+                  playSound?.("next.mp3");
+                } else {
+                  playSound?.("prev.mp3");
+                }
+                embla.scrollTo(idx);
+              };
+              return (
                 <div
-                  role="button"
-                  tabIndex={0}
-                  aria-label={isActive ? `Open ${game.name}` : `Select ${game.name}`}
-                  aria-pressed={isActive}
-                  onClick={handleClick}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleClick();
-                    }
-                    if (e.key === "ArrowRight" && idx !== selectedIndex) { e.preventDefault(); playSound?.("next.mp3"); embla?.scrollTo(idx); }
-                    if (e.key === "ArrowLeft" && idx !== selectedIndex) { e.preventDefault(); playSound?.("prev.mp3"); embla?.scrollTo(idx); }
-                  }}
-                  style={{ width: "100%", cursor: "pointer" }}
+                  key={game.name}
+                  style={{ flex: "0 0 33.3333%", display: "flex", justifyContent: "center", alignItems: "center", padding: "2vw" }}
                 >
-                  <GameCard 
-                    game={game} 
-                    style={getCardStyle(idx)} 
-                    isFocused={isActive} 
-                    isMuted={isMuted}
-                  />
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={isActive ? `Open ${game.name}` : `Select ${game.name}`}
+                    aria-pressed={isActive}
+                    onClick={handleClick}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleClick();
+                      }
+                      if (e.key === "ArrowRight" && idx !== selectedIndex) { e.preventDefault(); playSound?.("next.mp3"); embla?.scrollTo(idx); }
+                      if (e.key === "ArrowLeft" && idx !== selectedIndex) { e.preventDefault(); playSound?.("prev.mp3"); embla?.scrollTo(idx); }
+                    }}
+                    style={{ width: "100%", cursor: "pointer" }}
+                  >
+                    <GameCard game={game} style={getCardStyle(idx)} isFocused={isActive} />
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
