@@ -460,47 +460,49 @@ export default function MyGamesComponent({
                       </span>
                     )}
 
-                    <div
-                      style={{
-                        display: hoverIndex === idx ? "flex" : "none",
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                        cursor: "pointer",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <button
+                    {myGames.length > 1 && (
+                      <div
                         style={{
-                          fontSize: 12,
+                          display: hoverIndex === idx ? "flex" : "none",
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
                           cursor: "pointer",
-                          color: "#b00020",
-                        }}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          const confirmText = `DELETE ${title}`;
-                          const input = window.prompt(
-                            `Type \"${confirmText}\" to confirm deletion`,
-                          );
-                          if (input !== confirmText) return;
-                          try {
-                            const res = await fetch("/api/deleteGame", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ token, gameId: g.id }),
-                            });
-                            const data = await res.json().catch(() => ({}));
-                            if (res.ok && data?.ok) {
-                              await refresh();
-                            }
-                          } catch (e) {
-                            console.error(e);
-                          }
+                          justifyContent: "center",
                         }}
                       >
-                        Delete
-                      </button>
-                    </div>
+                        <button
+                          style={{
+                            fontSize: 12,
+                            cursor: "pointer",
+                            color: "#b00020",
+                          }}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const confirmText = `DELETE ${title}`;
+                            const input = window.prompt(
+                              `Type \"${confirmText}\" to confirm deletion`,
+                            );
+                            if (input !== confirmText) return;
+                            try {
+                              const res = await fetch("/api/deleteGame", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ token, gameId: g.id }),
+                              });
+                              const data = await res.json().catch(() => ({}));
+                              if (res.ok && data?.ok) {
+                                await refresh();
+                              }
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
