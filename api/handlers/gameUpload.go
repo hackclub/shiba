@@ -37,11 +37,23 @@ func validateZipFilePath(filePath, destDir string) bool {
 }
 
 func isAllowedFileType(fileName string) bool {
-	// // Allow everything - no file type restrictions
-	// return true
-	// hell no, only allow zip files
-	// IDENTITY THEFT IS NOT A JOKE JIM, MILLIONS OF FAMILIES SUFFER EVERY YEAR
-	return strings.HasSuffix(fileName, ".zip")
+	allowedExts := []string{
+		".html", // main file
+		".js", // will probably be a worker
+		".worker.js",// ok definitely a worker
+		".wasm", // webassembly is still a thing?
+		".side.wasm", // wtf is this
+		".pck", // godot export go brrr
+		".png", // we love images
+		".css", // css i will never forgive you (tailwind i love you)
+	}
+
+	for _, ext := range allowedExts {
+		if strings.HasSuffix(strings.ToLower(fileName), ext) {
+			return true
+		}
+	}
+	return false
 }
 
 // see i have no idea how big godot can export, so this is a bit of a guess, and you guys may need to change it based on demand
