@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-export default function OnboardingModal({ isOpen, token, onCompleted, playSound, playClip, stopAll }) {
+export default function OnboardingModal({ isOpen, token, onCompleted, playSound, playClip, stopAll, isMuted }) {
   const [shouldRender, setShouldRender] = useState(Boolean(isOpen));
   const [isExiting, setIsExiting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -142,12 +142,25 @@ export default function OnboardingModal({ isOpen, token, onCompleted, playSound,
 
   // Play background music when modal opens
   useEffect(() => {
-    if (isOpen) {
-      // Stop any existing audio and play the Zelda song
-      try { stopAll?.(); } catch (_) {}
-      playClip?.("zeldaSong.mp3");
+    if (isOpen && !isMuted) {
+      const timer = setTimeout(() => {
+        try {
+          playClip?.("WelcomeToShibaArcade.mp3");
+        } catch (e) {
+          console.error("Failed to play audio:", e);
+        }
+      }, 500);
+      return () => {
+        clearTimeout(timer);
+        try {
+          stopAll?.();
+        } catch (e) {
+          console.error("Failed to stop audio:", e);
+        }
+      };
     }
-  }, [isOpen, playClip, stopAll]);
+    return undefined;
+  }, [isOpen, playClip, stopAll, isMuted]);
 
   // Handle Enter key for navigation
   useEffect(() => {

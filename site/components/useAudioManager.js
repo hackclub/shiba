@@ -1,83 +1,107 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Simple audio manager that preloads audio files and plays them instantly
 export default function useAudioManager(fileNames = []) {
   const audioMapRef = useRef(new Map());
-  const currentClipRef = useRef(null);
+  const [isMuted, setIsMuted] = useState(false);
 
-  // Preload provided files once mounted
+  // Initialize with localStorage mute preference if available
   useEffect(() => {
-    const uniqueNames = Array.from(new Set((fileNames || []).filter(Boolean)));
-    uniqueNames.forEach((name) => {
-      if (!audioMapRef.current.has(name)) {
-        const audio = new Audio(`/${name}`);
-        audio.preload = "auto";
-        audio.crossOrigin = "anonymous";
-        try {
-          audio.load();
-        } catch (_) {
-          // noop
-        }
-        audioMapRef.current.set(name, audio);
+    try {
+      const savedMute = localStorage.getItem('shibaAudioMuted');
+      if (savedMute === 'true') {
+        setIsMuted(true);
+      }
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  // Preload audio files
+  useEffect(() => {
+    const audioMap = audioMapRef.current;
+    fileNames.forEach(fileName => {
+      if (!audioMap.has(fileName)) {
+        const audio = new Audio(`/${fileName}`);
+        audio.preload = 'auto';
+        audioMap.set(fileName, audio);
       }
     });
-  }, [Array.isArray(fileNames) ? fileNames.join("|") : String(fileNames)]);
+    
+    // Cleanup
+    return () => {
+      audioMap.forEach(audio => {
+        audio.pause();
+        audio.src = '';
+      });
+      audioMap.clear();
+    };
+  }, [fileNames]);
 
-  const stopAll = useCallback(() => {
-    audioMapRef.current.forEach((audio) => {
+  // Toggle mute state and save preference
+  const toggleMute = useCallback(() => {
+    setIsMuted(prev => {
+      const newState = !prev;
       try {
+        localStorage.setItem('shibaAudioMuted', String(newState));
+      } catch (e) {
+        // Ignore localStorage errors
+      }
+      return newState;
+    });
+  }, []);
+
+  // Play sound if not muted
+  const play = useCallback((fileName) => {
+    if (isMuted) return;
+    
+    const audioMap = audioMapRef.current;
+    const audio = audioMap.get(fileName);
+    if (audio) {
+      // Reset and play
+      audio.currentTime = 0;
+      const playPromise = audio.play();
+      if (playPromise) {
+        playPromise.catch(() => {
+          // Ignore play errors
+        });
+      }
+    }
+  }, [isMuted]);
+
+  // For longer game clip audio that might overlap
+  const playClip = useCallback((fileName) => {
+    if (isMuted) return;
+    
+    const audioMap = audioMapRef.current;
+    // Stop all other clips first
+    audioMap.forEach(audio => {
+      if (audio.duration > 4) { // Assume clips are longer than 4s
         audio.pause();
         audio.currentTime = 0;
-      } catch (_) {
-        // ignore
       }
+    });
+    
+    // Play the new clip
+    const audio = audioMap.get(fileName);
+    if (audio) {
+      const playPromise = audio.play();
+      if (playPromise) {
+        playPromise.catch(() => {
+          // Ignore play errors
+        });
+      }
+    }
+  }, [isMuted]);
+
+  // Stop all audio
+  const stopAll = useCallback(() => {
+    const audioMap = audioMapRef.current;
+    audioMap.forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0;
     });
   }, []);
 
-  const play = useCallback((name) => {
-    if (!name) return;
-    const audio = audioMapRef.current.get(name);
-    if (!audio) return;
-    try {
-      audio.currentTime = 0;
-    } catch (_) {
-      // ignore
-    }
-    const p = audio.play();
-    if (p && typeof p.catch === "function") {
-      p.catch(() => {
-        // Autoplay policies or not ready; ignore to avoid unhandled promise
-      });
-    }
-  }, []);
-
-  const playExclusive = useCallback(
-    (name) => {
-      stopAll();
-      play(name);
-    },
-    [play, stopAll],
-  );
-
-  // Play background "clip" track, stopping only the previous clip, not SFX
-  const playClip = useCallback(
-    (name) => {
-      if (!name) return;
-      const previousName = currentClipRef.current;
-      if (previousName && audioMapRef.current.has(previousName)) {
-        const prevAudio = audioMapRef.current.get(previousName);
-        try {
-          prevAudio.pause();
-          prevAudio.currentTime = 0;
-        } catch (_) {
-          // ignore
-        }
-      }
-      currentClipRef.current = name;
-      play(name);
-    },
-    [play],
-  );
-
-  return { play, playExclusive, playClip, stopAll };
+  return { play, playClip, stopAll, isMuted, toggleMute };
 }
