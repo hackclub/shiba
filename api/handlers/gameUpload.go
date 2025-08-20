@@ -3,6 +3,7 @@ package handlers
 import (
 	"archive/zip"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -36,6 +37,69 @@ func validateZipFilePath(filePath, destDir string) bool {
 func isAllowedFileType(fileName string) bool {
 	// Allow everything - no file type restrictions
 	return true
+}
+
+// see i have no idea how big godot can export, so this is a bit of a guess, and you guys may need to change it based on demand
+const (
+    maxZipEntries             = 2000            // like 2000 files for a bundled game is a lot unless you have a fuck ton of assets
+    maxTotalUncompressedBytes = 500 << 20       // 500 mb max total size?
+    maxPerFileUncompressed    = 200 << 20       // 200 mb per file
+    maxCompressionRatio       = 100             // 100:1 compression ratio because yes :thumbsup:
+)
+
+func jsonValidationError(w http.ResponseWriter, status int, msg, details string) {
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(status)
+    _ = json.NewEncoder(w).Encode(map[string]any{
+        "error":            msg,
+        "validationError":  true,
+        "details":          details,
+    })
+}
+
+func safeUint64ToInt64(u uint64) int64 {
+    if u > ^uint64(0)>>1 {
+        return int64(^uint64(0) >> 1)
+    }
+    return int64(u)
+}
+
+func lolCheckForZipBomb(zr *zip.ReadCloser) error {
+    var entries int
+    var totalUncompressed uint64
+    for _, f := range zr.File {
+        if strings.HasPrefix(f.Name, "__MACOSX/") {
+            continue
+        }
+        entries++
+        if entries > maxZipEntries {
+            return errors.New("too many files in archive")
+        }
+
+        uc := f.UncompressedSize64
+        if uc == 0 && f.UncompressedSize > 0 {
+            uc = uint64(f.UncompressedSize)
+        }
+        totalUncompressed += uc
+        if totalUncompressed > maxTotalUncompressedBytes {
+            return errors.New("total uncompressed size exceeds limit")
+        }
+
+        cs := f.CompressedSize64
+        if cs == 0 && f.CompressedSize > 0 {
+            cs = uint64(f.CompressedSize)
+        }
+        if cs > 0 && uc > 0 {
+            // blah lbah blah reject if the compression ratio is too high
+            if uc/cs > maxCompressionRatio {
+                return errors.New("excessive compression ratio detected")
+            }
+        }
+        if uc > maxPerFileUncompressed {
+            return errors.New("a file exceeds per-file uncompressed size limit")
+        }
+    }
+    return nil
 }
 
 func sanitizeForAirtableFormula(input string) string {
@@ -155,6 +219,13 @@ func GameUploadHandler(srv *structs.Server) http.HandlerFunc {
 			return
 		}
 
+		// ok but zipbomb protection
+		if err := lolCheckForZipBomb(zr); err != nil {
+			jsonValidationError(w, http.StatusBadRequest, "Zip validation failed", err.Error())
+			return
+		}
+
+		var totalWritten uint64
 		for _, f := range zr.File {
 			// Don't do it if file is in a __MACOSX directory
 			if strings.HasPrefix(f.Name, "__MACOSX/") {
@@ -199,13 +270,47 @@ func GameUploadHandler(srv *structs.Server) http.HandlerFunc {
 				return
 			}
 
-			_, err = io.Copy(outFile, rc)
+			// copy with per file and total limits
+			var writtenForFile uint64
+			buf := make([]byte, 64*1024)
+			for {
+				n, readErr := rc.Read(buf)
+				if n > 0 {
+					writtenForFile += uint64(n)
+					totalWritten += uint64(n)
+					if writtenForFile > maxPerFileUncompressed {
+						outFile.Close()
+						rc.Close()
+						os.Remove(fpath)
+						jsonValidationError(w, http.StatusBadRequest, "File too large after decompression", f.Name)
+						return
+					}
+					if totalWritten > maxTotalUncompressedBytes {
+						outFile.Close()
+						rc.Close()
+						os.Remove(fpath)
+						jsonValidationError(w, http.StatusBadRequest, "Archive total uncompressed size limit exceeded", "")
+						return
+					}
+					if _, writeErr := outFile.Write(buf[:n]); writeErr != nil {
+						outFile.Close()
+						rc.Close()
+						http.Error(w, "Failed to write file: "+writeErr.Error(), http.StatusInternalServerError)
+						return
+					}
+				}
+				if readErr == io.EOF {
+					break
+				}
+				if readErr != nil {
+					outFile.Close()
+					rc.Close()
+					http.Error(w, "Failed to read file in zip: "+readErr.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
 			outFile.Close()
 			rc.Close()
-			if err != nil {
-				http.Error(w, "Failed to write file: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
 
 		}
 
