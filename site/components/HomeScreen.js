@@ -178,16 +178,6 @@ export function MovingBackground() {
             transform: scale(0.5);
           }
         }
-        @keyframes pulse {
-          0%, 100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          50% {
-            transform: scale(1.1);
-            opacity: 0.8;
-          }
-        }
       `}</style>
     </div>
   );
@@ -1525,60 +1515,44 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
             paddingTop: 32,
             paddingBottom: 32,
             WebkitClipPath:
-              "polygon(0 0, 140px 0, 140px 64px, calc(100% - 88px) 64px, calc(100% - 88px) 0, 100% 0, 100% 100%, 0 100%)",
+              "polygon(0 0, 88px 0, 88px 64px, calc(100% - 88px) 64px, calc(100% - 88px) 0, 100% 0, 100% 100%, 0 100%)",
             clipPath:
-              "polygon(0 0, 140px 0, 140px 64px, calc(100% - 88px) 64px, calc(100% - 88px) 0, 100% 0, 100% 100%, 0 100%)",
+              "polygon(0 0, 88px 0, 88px 64px, calc(100% - 88px) 64px, calc(100% - 88px) 0, 100% 0, 100% 100%, 0 100%)",
           }}
         >
           <div
             onClick={() => setIsEventsOpen(true)}
             style={{
               display: "flex",
-              height: 52,
-              marginTop: -26,
-              width: 124,
-              gap: 10,
-              backgroundColor: "rgba(255, 255, 255, 1)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "2px solid rgba(255, 255, 255, 0.8)",
-              borderRadius: "12px",
-              padding: "10px 12px",
+              height: 48,
+              marginTop: -24,
+              width: 48,
+              backgroundColor: "rgba(255, 255, 255, 0.5)",
+              aspectRatio: 1,
+              border: "1px solid rgba(0, 0, 0, 0.1)",
+              borderRadius: "4px",
+              padding: 8,
               boxSizing: "border-box",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+              transition: "background-color 0.2s ease",
               position: "relative",
-              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
-              transform: "translateY(0)",
             }}
             onMouseEnter={(e) => {
-              e.target.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
-              e.target.style.transform = "translateY(-2px)";
-              e.target.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.9)";
+              e.target.style.backgroundColor = "rgba(255, 255, 255, 0.7)";
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = "rgba(255, 255, 255, 0.75)";
-              e.target.style.transform = "translateY(0)";
-              e.target.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 1)";
+              e.target.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
             }}
           >
-            <span
-              style={{
-                fontSize: "0.95rem",
-                fontWeight: "700",
-                color: "#4a5568",
-                letterSpacing: "0.02em",
-              }}
-              >Notifs</span>
             <img
               src="./ChatMessage.svg"
               alt="Chat Message"
               style={{
-                width: "24px",
-                height: "24px",
-                opacity: 0.9,
+                width: "100%",
+                opacity: 0.85,
+                height: "100%",
                 objectFit: "contain",
               }}
             />
@@ -1586,22 +1560,20 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
               <div
                 style={{
                   position: "absolute",
-                  top: -6,
-                  right: -6,
-                  width: 22,
-                  height: 22,
-                  backgroundColor: "#ef4444",
+                  top: -4,
+                  right: -4,
+                  width: 20,
+                  height: 20,
+                  backgroundColor: "#FF0000",
                   borderRadius: "50%",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   color: "white",
-                  fontSize: "11px",
-                  fontWeight: "700",
-                  border: "3px solid white",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  border: "2px solid white",
                   pointerEvents: "none",
-                  boxShadow: "0 2px 8px rgba(239, 68, 68, 0.4)",
-                  animation: "pulse 2s infinite",
                 }}
               >
                 1
