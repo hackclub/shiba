@@ -1316,6 +1316,7 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
   const [hasOpenedEventsNotification, setHasOpenedEventsNotification] = useState(false);
   const [hasOnboarded, setHasOnboarded] = useState(true);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   // Preload SFX and game clip audios for instant playback
   const sfxFiles = ["next.mp3", "prev.mp3", "shiba-bark.mp3"];
@@ -1324,6 +1325,7 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
     play: playSound,
     playClip,
     stopAll,
+    setVolume,
   } = useAudioManager([...sfxFiles, ...clipFiles, "zeldaSong.mp3"]);
 
   // Check if user has opened events notification
@@ -1339,6 +1341,11 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
       setHasOpenedEventsNotification(true);
     }
   }, [isEventsOpen, hasOpenedEventsNotification]);
+
+  // Control audio volume based on mute state
+  useEffect(() => {
+    setVolume(isMuted ? 0 : 1);
+  }, [isMuted, setVolume]);
 
   // When selected game changes, play its clip immediately using the preloaded element
   useEffect(() => {
@@ -1438,7 +1445,7 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
               "inset 0 1px 1.5px rgba(255, 255, 255, 0.6), inset 0 -8px 16px rgba(255, 255, 255, 0.6)",
             borderBottom: "0px solid rgba(0, 0, 0, 0)",
             justifyContent: "space-between",
-            padding: 16,
+            padding: 14,
             paddingLeft: 24,
             paddingRight: 24,
           }}
@@ -1447,8 +1454,8 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
             onClick={() => setIsProfileOpen(true)}
             style={{
               display: "flex",
-              height: 32,
-              width: 32,
+              height: 36,
+              width: 36,
               aspectRatio: 1,
               backgroundColor: "white",
               border: "1px solid rgba(0, 0, 0, 0.3)",
@@ -1524,7 +1531,53 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
           <p style={{ fontFamily: "GT Maru", fontWeight: "bold" }}>
             Shiba Arcade
           </p>
-          <p style={{ margin: 0 }}>{tokyoTime}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+              <span style={{ 
+                fontSize: "11px", 
+                opacity: 0.6, 
+                fontWeight: "500",
+                letterSpacing: "0.5px",
+                marginBottom: "1px"
+              }}>
+                TOKYO
+              </span>
+              <span style={{ 
+                margin: 0, 
+                fontFamily: "monospace",
+                fontSize: "14px",
+                fontWeight: "600",
+                letterSpacing: "0.5px"
+              }}>
+                {tokyoTime}
+              </span>
+            </div>
+            <div
+              onClick={() => setIsMuted(!isMuted)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 40,
+                height: 40,
+                cursor: "pointer",
+                borderRadius: 8,
+                border: "1x solid rgba(0, 0, 0, 0.2)",
+                transition: "all 0.15s ease",
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              <img
+                src={isMuted ? "/SoundOff.svg" : "/SoundOn.svg"}
+                alt={isMuted ? "Unmute" : "Mute"}
+                style={{
+                  width: 18,
+                  height: 18,
+                  opacity: 0.8,
+                }}
+              />
+            </div>
+          </div>
         </div>
         <div
           style={{
@@ -1533,6 +1586,7 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
             alignItems: "center",
             height: "100vh",
             justifyContent: "center",
+            userSelect: "none",
           }}
         >
           <GameCarousel
