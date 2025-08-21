@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { safeEscapeFormulaString, isValidEmail } from './utils/security.js';
 import { checkRateLimit } from './utils/rateLimit.js';
+import { generateReferralCode, initializeUsedCodes } from './utils/referralCode.js';
 
 // This endpoint handles user login with OTP generation
 // Includes race condition protection to prevent duplicate user creation
@@ -10,6 +11,7 @@ const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = 'appg245A41MWc6Rej';
 const AIRTABLE_USERS_TABLE = 'Users';
 const AIRTABLE_OTP_TABLE = 'OTP';
+const AIRTABLE_REFERRALS_TABLE = 'Referrals';
 const AIRTABLE_API_BASE = 'https://api.airtable.com/v0';
 const LOOPS_TRANSACTIONAL_KEY = process.env.LOOPS_TRANSACTIONAL_KEY;
 const LOOPS_TRANSACTIONAL_TEMPLATE_ID = process.env.LOOPS_TRANSACTIONAL_TEMPLATE_ID; // required to send
@@ -25,7 +27,7 @@ export default async function handler(req, res) {
 
   // Proceed without debug-only Loops configuration check
 
-  const { email } = req.body || {};
+  const { email, sentby } = req.body || {};
 
   if (!email) {
     return res.status(400).json({ message: 'Missing required field: email' });
@@ -33,6 +35,16 @@ export default async function handler(req, res) {
 
   if (!AIRTABLE_API_KEY) {
     return res.status(500).json({ message: 'Server configuration error' });
+  }
+
+  // Initialize used referral codes from existing users to ensure uniqueness
+  try {
+    const existingCodes = await getAllExistingReferralCodes();
+    initializeUsedCodes(existingCodes);
+    console.log(`Initialized ${existingCodes.length} existing referral codes`);
+  } catch (error) {
+    console.error('Failed to initialize referral codes:', error);
+    // Continue without initialization - will use fallback with number suffix if needed
   }
 
   const normalizedEmail = normalizeEmail(email);
@@ -64,6 +76,25 @@ export default async function handler(req, res) {
         try {
           userRecord = await createUser(normalizedEmail);
           console.log(`Successfully created user for email: ${normalizedEmail}`);
+          
+          // Handle referral tracking for new users
+          console.log(`Checking for referral tracking. sentby: "${sentby}"`);
+          if (sentby && sentby.trim() !== '') {
+            console.log(`Creating referral record for new user with referral code: ${sentby}`);
+            try {
+              await createReferralRecord(userRecord.id, sentby.trim(), normalizedEmail);
+              console.log(`Successfully created referral record for new user with referral code: ${sentby}`);
+              
+              // Track successful referral usage
+              console.log(`Referral code ${sentby.trim()} was successfully used by new user ${userRecord.id}`);
+            } catch (referralError) {
+              console.error('Failed to create referral record:', referralError);
+              // Don't fail the entire login process if referral tracking fails
+            }
+          } else {
+            console.log('No sentby parameter provided, skipping referral tracking');
+          }
+          
           break;
         } catch (createError) {
           retryCount++;
@@ -105,6 +136,25 @@ export default async function handler(req, res) {
         userRecord = cleanupResult;
         console.log(`Using best user record after cleanup: ${userRecord.id}`);
       }
+    }
+
+    // Ensure user has a referral code (for both new and existing users)
+    if (!userRecord.fields?.ReferralCode || userRecord.fields.ReferralCode.trim() === '') {
+      console.log(`User ${userRecord.id} doesn't have a referral code, generating one...`);
+      try {
+        const newReferralCode = generateReferralCode();
+        await updateUserReferralCode(userRecord.id, newReferralCode);
+        console.log(`Generated and assigned referral code ${newReferralCode} to user ${userRecord.id}`);
+        
+        // Update the userRecord to include the new referral code
+        userRecord.fields = userRecord.fields || {};
+        userRecord.fields.ReferralCode = newReferralCode;
+      } catch (referralCodeError) {
+        console.error('Failed to generate referral code for existing user:', referralCodeError);
+        // Don't fail the entire login process if referral code generation fails
+      }
+    } else {
+      console.log(`User ${userRecord.id} already has referral code: ${userRecord.fields.ReferralCode}`);
     }
 
     // Enforce 10 second cooldown for OTP
@@ -250,11 +300,15 @@ async function findUserByEmailFallback(email) {
 }
 
 async function createUser(email) {
+  // Generate a unique referral code for new users
+  const referralCode = generateReferralCode();
+  
   const payload = {
     records: [
       {
         fields: {
           Email: email,
+          ReferralCode: referralCode,
         },
       },
     ],
@@ -265,6 +319,7 @@ async function createUser(email) {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    console.log(`Created new user with referral code: ${referralCode}`);
     return data.records[0];
   } catch (error) {
     // Check if this is a duplicate error from Airtable
@@ -612,6 +667,125 @@ async function deleteUser(userId) {
   await airtableRequest(`${encodeURIComponent(AIRTABLE_USERS_TABLE)}/${encodeURIComponent(userId)}`, {
     method: 'DELETE',
   });
+}
+
+// Function to get all existing referral codes from the database
+async function getAllExistingReferralCodes() {
+  const allCodes = [];
+  let offset = null;
+  
+  do {
+    const params = new URLSearchParams({
+      pageSize: '100', // Maximum page size
+    });
+    
+    if (offset) {
+      params.set('offset', offset);
+    }
+
+    const data = await airtableRequest(`${encodeURIComponent(AIRTABLE_USERS_TABLE)}?${params.toString()}`, {
+      method: 'GET',
+    });
+    
+    if (data.records) {
+      // Extract referral codes from records
+      const codes = data.records
+        .map(record => record.fields?.ReferralCode)
+        .filter(code => code && code.trim() !== '');
+      
+      allCodes.push(...codes);
+    }
+    
+    offset = data.offset; // Get next page offset
+  } while (offset);
+  
+  return allCodes;
+}
+
+// Function to update a user's referral code
+async function updateUserReferralCode(userId, referralCode) {
+  const candidateFields = ['ReferralCode', 'referralCode', 'referral_code'];
+  let lastError = null;
+  
+  for (const fieldName of candidateFields) {
+    try {
+      const payload = { fields: { [fieldName]: referralCode } };
+      await airtableRequest(`${encodeURIComponent(AIRTABLE_USERS_TABLE)}/${encodeURIComponent(userId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      return;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  
+  throw lastError || new Error('Failed to update user referral code');
+}
+
+// Function to find user by referral code
+async function findUserByReferralCode(referralCode) {
+  if (!referralCode || referralCode.trim() === '') {
+    return null;
+  }
+
+  const candidateFields = ['ReferralCode', 'referralCode', 'referral_code'];
+  
+  for (const fieldName of candidateFields) {
+    try {
+      const formula = `{${fieldName}} = "${referralCode.trim()}"`;
+      const params = new URLSearchParams({
+        filterByFormula: formula,
+        pageSize: '1',
+      });
+
+      const data = await airtableRequest(`${encodeURIComponent(AIRTABLE_USERS_TABLE)}?${params.toString()}`, {
+        method: 'GET',
+      });
+      
+      if (data.records && data.records.length > 0) {
+        console.log(`Found referrer user with code ${referralCode}: ${data.records[0].id}`);
+        return data.records[0];
+      }
+    } catch (error) {
+      console.log(`Failed to search for referral code ${referralCode} in field ${fieldName}:`, error.message);
+    }
+  }
+  
+  console.log(`No user found with referral code: ${referralCode}`);
+  return null;
+}
+
+// Function to create a referral record
+async function createReferralRecord(referredPersonId, referralCode, email) {
+  // Find the user who has this referral code
+  const referrerUser = await findUserByReferralCode(referralCode);
+  
+  const payload = {
+    records: [
+      {
+        fields: {
+          Email: email, // Email of the person who signed up
+          ReferredPerson: [referredPersonId], // Linked record to the new user
+          ReferredBy: referrerUser ? [referrerUser.id] : [], // Linked record to the referrer (if found)
+          ReferralCode: referralCode, // The referral code used
+        },
+      },
+    ],
+  };
+
+  try {
+    const data = await airtableRequest(encodeURIComponent(AIRTABLE_REFERRALS_TABLE), {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    
+    console.log(`Created referral record: ${data.records[0].id}`);
+    return data.records[0];
+  } catch (error) {
+    console.error('Failed to create referral record:', error);
+    throw error;
+  }
 }
 
 

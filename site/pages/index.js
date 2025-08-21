@@ -115,12 +115,12 @@ export default function Home() {
     };
   }, [token]);
 
-  const requestOtp = async (email) => {
+  const requestOtp = async (email, sentby) => {
     try {
       const res = await fetch("/api/newLogin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, sentby }),
       });
       const data = await res.json().catch(() => ({}));
       return { ok: res.ok, ...data };

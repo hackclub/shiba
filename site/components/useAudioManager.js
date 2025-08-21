@@ -34,16 +34,6 @@ export default function useAudioManager(fileNames = []) {
     });
   }, []);
 
-  const setVolume = useCallback((volume) => {
-    audioMapRef.current.forEach((audio) => {
-      try {
-        audio.volume = Math.max(0, Math.min(1, volume));
-      } catch (_) {
-        // ignore
-      }
-    });
-  }, []);
-
   const play = useCallback((name) => {
     if (!name) return;
     const audio = audioMapRef.current.get(name);
@@ -89,5 +79,5 @@ export default function useAudioManager(fileNames = []) {
     [play],
   );
 
-  return { play, playExclusive, playClip, stopAll, setVolume };
+  return { play, playExclusive, playClip, stopAll };
 }
