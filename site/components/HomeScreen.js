@@ -1316,7 +1316,36 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
   const [hasOpenedEventsNotification, setHasOpenedEventsNotification] = useState(false);
   const [hasOnboarded, setHasOnboarded] = useState(true);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shibaArcadeMuted');
+      return saved === 'true';
+    }
+    return false;
+  });
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [volumeLevel, setVolumeLevel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('shibaArcadeVolume');
+      return saved ? parseInt(saved, 10) : 100;
+    }
+    return 100;
+  });
+  const volumeSliderRef = useRef(null);
+
+  // Save volume level to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('shibaArcadeVolume', volumeLevel.toString());
+    }
+  }, [volumeLevel]);
+
+  // Save mute state to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('shibaArcadeMuted', isMuted.toString());
+    }
+  }, [isMuted]);
 
   // Preload SFX and game clip audios for instant playback
   const sfxFiles = ["next.mp3", "prev.mp3", "shiba-bark.mp3"];
@@ -1342,10 +1371,13 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
     }
   }, [isEventsOpen, hasOpenedEventsNotification]);
 
-  // Control audio volume based on mute state
+  // Control audio volume based on mute state and volume level
   useEffect(() => {
-    setVolume(isMuted ? 0 : 1);
-  }, [isMuted, setVolume]);
+    const linearVolume = isMuted ? 0 : volumeLevel / 100;
+    // Convert linear volume to logarithmic (more natural volume control)
+    const logVolume = linearVolume === 0 ? 0 : Math.pow(linearVolume, 2);
+    setVolume(logVolume);
+  }, [isMuted, volumeLevel, setVolume]);
 
   // When selected game changes, play its clip immediately using the preloaded element
   useEffect(() => {
@@ -1404,6 +1436,20 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
       setIsProfileOpen(true);
     }
   }, [autoOpenProfile]);
+
+  // Close volume slider when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (volumeSliderRef.current && !volumeSliderRef.current.contains(event.target)) {
+        setShowVolumeSlider(false);
+      }
+    };
+
+    if (showVolumeSlider) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showVolumeSlider]);
 
   // Check onboarding status when profile is loaded
   useEffect(() => {
@@ -1553,29 +1599,121 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
               </span>
             </div>
             <div
-              onClick={() => setIsMuted(!isMuted)}
+              ref={volumeSliderRef}
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                width: 40,
-                height: 40,
-                cursor: "pointer",
-                borderRadius: 8,
-                border: "1x solid rgba(0, 0, 0, 0.2)",
-                transition: "all 0.15s ease",
-                backdropFilter: "blur(4px)",
+                gap: 8,
+                position: "relative",
               }}
             >
-              <img
-                src={isMuted ? "/SoundOff.svg" : "/SoundOn.svg"}
-                alt={isMuted ? "Unmute" : "Mute"}
+              <div
+                onClick={() => setShowVolumeSlider(!showVolumeSlider)}
                 style={{
-                  width: 18,
-                  height: 18,
-                  opacity: 0.8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 40,
+                  height: 40,
+                  cursor: "pointer",
+                  borderRadius: 8,
+                  transition: "all 0.15s ease",
+                  backdropFilter: "blur(4px)",
                 }}
-              />
+              >
+                <img
+                  src={isMuted || volumeLevel === 0 ? "/SoundOff.svg" : "/SoundOn.svg"}
+                  alt={isMuted || volumeLevel === 0 ? "Unmute" : "Mute"}
+                  style={{
+                    width: 18,
+                    height: 18,
+                    opacity: 0.8,
+                  }}
+                />
+              </div>
+              
+              {showVolumeSlider && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    right: "100%",
+                    transform: "translateY(-50%)",
+                    marginRight: 8,
+                    backgroundColor: "rgba(255, 255, 255, 0.95)",
+                    backdropFilter: "blur(8px)",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    border: "1px solid rgba(0, 0, 0, 0.1)",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    minWidth: 120,
+                    zIndex: 1000,
+                  }}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsMuted(!isMuted);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: 4,
+                      opacity: 0.7,
+                      transition: "opacity 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => e.target.style.opacity = "1"}
+                    onMouseLeave={(e) => e.target.style.opacity = "0.7"}
+                  >
+                    <img
+                      src={isMuted ? "/SoundOff.svg" : "/SoundOn.svg"}
+                      alt={isMuted ? "Unmute" : "Mute"}
+                      style={{ width: 16, height: 16 }}
+                    />
+                  </button>
+                  
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={volumeLevel}
+                    onChange={(e) => {
+                      const newVolume = parseInt(e.target.value);
+                      setVolumeLevel(newVolume);
+                      if (newVolume > 0) setIsMuted(false);
+                    }}
+                    style={{
+                      flex: 1,
+                      height: 4,
+                      background: `linear-gradient(to right, #ff6fa5 0%, #ff6fa5 ${volumeLevel}%, rgba(0,0,0,0.2) ${volumeLevel}%, rgba(0,0,0,0.2) 100%)`,
+                      borderRadius: 2,
+                      outline: "none",
+                      appearance: "none",
+                      cursor: "pointer",
+                    }}
+                  />
+                  
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "rgba(0,0,0,0.7)",
+                      minWidth: 24,
+                      textAlign: "right",
+                    }}
+                  >
+                    {isMuted ? "0" : volumeLevel}%
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1747,6 +1885,38 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
           setIsOnboardingOpen(false);
         }}
       />
+      <style jsx>{`
+        input[type="range"]::-webkit-slider-thumb {
+          appearance: none;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #ff6fa5;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #ff6fa5;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          cursor: pointer;
+          border: none;
+        }
+        input[type="range"]::-webkit-slider-track {
+          height: 4px;
+          border-radius: 2px;
+        }
+        input[type="range"]::-moz-range-track {
+          height: 4px;
+          border-radius: 2px;
+          border: none;
+          background: transparent;
+        }
+      `}</style>
     </>
   );
 }

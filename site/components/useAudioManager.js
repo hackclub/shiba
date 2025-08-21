@@ -35,9 +35,10 @@ export default function useAudioManager(fileNames = []) {
   }, []);
 
   const setVolume = useCallback((volume) => {
+    const clampedVolume = Math.max(0, Math.min(1, volume));
     audioMapRef.current.forEach((audio) => {
       try {
-        audio.volume = Math.max(0, Math.min(1, volume));
+        audio.volume = clampedVolume;
       } catch (_) {
         // ignore
       }
