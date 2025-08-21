@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import GameCard from "@/components/GameCard";
 
-export default function GameCarousel({ games, onSelect, playSound, playClip, setAppOpen, stopAll, selectedIndex: controlledIndex, isProfileOpen, isEventsOpen, isOnboardingOpen }) {
+export default function GameCarousel({ games, onSelect, playSound, playClip, setAppOpen, stopAll, selectedIndex: controlledIndex, isProfileOpen, isEventsOpen, isOnboardingOpen, isMuted }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const numGames = games?.length ?? 0;
 
