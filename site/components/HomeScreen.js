@@ -1352,6 +1352,19 @@ export default function HomeScreen({ games, setAppOpen, selectedGame, setSelecte
     toggleMute
   } = useAudioManager([...sfxFiles, ...clipFiles, "zeldaSong.mp3"]);
 
+  // Check if user has muted audio in localStorage, load it if so.
+  useEffect(() => {
+    let hasMuted = localStorage.getItem("isMuted");
+    if (hasMuted === null) {
+      localStorage.setItem("isMuted", "false");
+      hasMuted = "false";
+    } else {
+      if (hasMuted === "true" && !isMuted) {
+        toggleMute();
+      }
+    }
+  }, [isMuted, toggleMute]);
+
   // Check if user has opened events notification
   useEffect(() => {
     const hasOpened = getCookie("hasOpenedEventsNotification");
