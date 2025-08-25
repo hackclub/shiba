@@ -4,8 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export default function useAudioManager(fileNames = []) {
   const audioMapRef = useRef(new Map());
   const currentClipRef = useRef(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [sfxMuted, setSfxMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("isMuted");
+    return stored !== null ? JSON.parse(stored) : false;
+  });
+  const [sfxMuted, setSfxMuted] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("sfxMuted");
+    return stored !== null ? JSON.parse(stored) : false;
+  });
   const sfxFiles = ["next.mp3", "prev.mp3", "shiba-bark.mp3"];
 
   // Preload provided files once mounted
@@ -40,11 +48,19 @@ export default function useAudioManager(fileNames = []) {
   }, [isMuted, sfxMuted]);
 
   const toggleMute = useCallback(() => {
-    setIsMuted(prev => !prev);
+    setIsMuted((prev) => {
+      const newValue = !prev;
+      localStorage.setItem("isMuted", JSON.stringify(newValue));
+      return newValue;
+    });
   }, []);
 
   const toggleSfxMute = useCallback(() => {
-    setSfxMuted(prev => !prev);
+    setSfxMuted((prev) => {
+      const newValue = !prev;
+      localStorage.setItem("sfxMuted", JSON.stringify(newValue));
+      return newValue;
+    });
   }, []);
 
   const stopAll = useCallback(() => {
@@ -58,35 +74,38 @@ export default function useAudioManager(fileNames = []) {
     });
   }, []);
 
-  const play = useCallback((name) => {
-    if (!name) return;
-    const audio = audioMapRef.current.get(name);
-    if (!audio) return;
-    
-    // Determine if this is a sound effect
-    const isSfx = sfxFiles.includes(name);
-    
-    try {
-      audio.currentTime = 0;
-      // Apply appropriate mute state based on audio type
-      audio.muted = isSfx ? sfxMuted : isMuted;
-    } catch (_) {
-      // ignore
-    }
-    const p = audio.play();
-    if (p && typeof p.catch === "function") {
-      p.catch(() => {
-        // Autoplay policies or not ready; ignore to avoid unhandled promise
-      });
-    }
-  }, [isMuted, sfxMuted]);
+  const play = useCallback(
+    (name) => {
+      if (!name) return;
+      const audio = audioMapRef.current.get(name);
+      if (!audio) return;
+
+      // Determine if this is a sound effect
+      const isSfx = sfxFiles.includes(name);
+
+      try {
+        audio.currentTime = 0;
+        // Apply appropriate mute state based on audio type
+        audio.muted = isSfx ? sfxMuted : isMuted;
+      } catch (_) {
+        // ignore
+      }
+      const p = audio.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          // Autoplay policies or not ready; ignore to avoid unhandled promise
+        });
+      }
+    },
+    [isMuted, sfxMuted]
+  );
 
   const playExclusive = useCallback(
     (name) => {
       stopAll();
       play(name);
     },
-    [play, stopAll],
+    [play, stopAll]
   );
 
   // Play background "clip" track, stopping only the previous clip, not SFX
@@ -106,17 +125,17 @@ export default function useAudioManager(fileNames = []) {
       currentClipRef.current = name;
       play(name);
     },
-    [play],
+    [play]
   );
 
-  return { 
-    play, 
-    playExclusive, 
-    playClip, 
-    stopAll, 
-    isMuted, 
+  return {
+    play,
+    playExclusive,
+    playClip,
+    stopAll,
+    isMuted,
     toggleMute,
     sfxMuted,
-    toggleSfxMute
+    toggleSfxMute,
   };
 }
