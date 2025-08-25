@@ -130,6 +130,7 @@ func main() {
 			// Required headers for Godot web games (cross-origin isolation)
 			w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
 			w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+			w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
 			next.ServeHTTP(w, r)
 		})
 	})
