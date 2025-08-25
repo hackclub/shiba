@@ -24,7 +24,7 @@ export default function useAudioManager(fileNames = []) {
         audioMapRef.current.set(name, audio);
       }
     });
-  }, [Array.isArray(fileNames) ? fileNames.join("|") : String(fileNames)]);
+  }, [fileNames]);
 
   // Apply muted state to audio elements based on their type
   useEffect(() => {
