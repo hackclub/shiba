@@ -709,7 +709,12 @@ function DetailView({
     const fetchProjects = async () => {
       console.log('Fetching projects for SlackId:', SlackId, 'and gameId:', game?.id);
       if (!SlackId) return;
-      let url = `/api/hackatimeProjects?slackId=${encodeURIComponent(SlackId)}`;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) {
+        console.warn('No token found in localStorage');
+        return;
+      }
+      let url = `/api/hackatimeProjects?slackId=${encodeURIComponent(SlackId)}&token=${encodeURIComponent(token)}`;
       if (game?.id) {
         url += `&gameId=${encodeURIComponent(game.id)}`;
       }

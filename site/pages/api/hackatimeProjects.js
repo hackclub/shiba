@@ -1,26 +1,3 @@
-
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
-const AIRTABLE_GAMES_TABLE = process.env.AIRTABLE_GAMES_TABLE;
-const AIRTABLE_API_BASE = 'https://api.airtable.com/v0';
-
-async function airtableRequest(path, options = {}) {
-  const url = `${AIRTABLE_API_BASE}/${AIRTABLE_BASE_ID}/${path}`;
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${AIRTABLE_API_KEY}`,
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  });
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`Airtable error ${response.status}: ${text}`);
-  }
-  return response.json();
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -29,8 +6,12 @@ export default async function handler(req, res) {
 
   const slackId = String(req.query.slackId || '').trim();
   const gameId = req.query.gameId ? String(req.query.gameId).trim() : null;
+  const token = req.query.token ? String(req.query.token).trim() : null;
   if (!slackId) {
     return res.status(400).json({ message: 'Missing slackId' });
+  }
+  if (!token) {
+    return res.status(400).json({ message: 'Missing token' });
   }
   if (!/^[A-Za-z0-9_-]{1,50}$/.test(slackId)) {
     return res.status(400).json({ message: 'That is a funny looking slack id' });
@@ -39,38 +20,35 @@ export default async function handler(req, res) {
   let assignedProjectsMap = {};
   let allowedForGame = [];
   try {
-    let allRecords = [];
-    let offset;
-    do {
-      const params = new URLSearchParams();
-      params.set('pageSize', '100');
-      if (offset) params.set('offset', offset);
-      const page = await airtableRequest(`${encodeURIComponent(AIRTABLE_GAMES_TABLE)}?${params.toString()}`, { method: 'GET' });
-      const pageRecords = Array.isArray(page?.records) ? page.records : [];
-      allRecords = allRecords.concat(pageRecords);
-      offset = page?.offset;
-    } while (offset);
-    for (const rec of allRecords) {
-      const val = rec.fields?.['Hackatime Projects'];
-      if (typeof val === 'string') {
-        val.split(',').map(s => s.trim()).filter(Boolean).forEach(name => {
-          assignedProjectsMap[name] = rec.id;
-        });
-      } else if (Array.isArray(val)) {
-        val.map(s => String(s).trim()).filter(Boolean).forEach(name => {
-          assignedProjectsMap[name] = rec.id;
-        });
-      }
-      if (gameId && rec.id === gameId) {
+    const gamesRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/GetMyGames`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    const games = await gamesRes.json();
+    if (Array.isArray(games)) {
+      for (const rec of games) {
+        const val = rec.HackatimeProjects;
         if (typeof val === 'string') {
-          allowedForGame = val.split(',').map(s => s.trim()).filter(Boolean);
+          val.split(',').map(s => s.trim()).filter(Boolean).forEach(name => {
+            assignedProjectsMap[name] = rec.id;
+          });
         } else if (Array.isArray(val)) {
-          allowedForGame = val.map(s => String(s).trim()).filter(Boolean);
+          val.map(s => String(s).trim()).filter(Boolean).forEach(name => {
+            assignedProjectsMap[name] = rec.id;
+          });
+        }
+        if (gameId && rec.id === gameId) {
+          if (typeof val === 'string') {
+            allowedForGame = val.split(',').map(s => s.trim()).filter(Boolean);
+          } else if (Array.isArray(val)) {
+            allowedForGame = val.map(s => String(s).trim()).filter(Boolean);
+          }
         }
       }
     }
   } catch (e) {
-    console.error('Failed to fetch assigned Hackatime projects from Airtable:', e);
+    console.error('Failed to fetch assigned Hackatime projects from GetMyGames:', e);
     assignedProjectsMap = {};
     allowedForGame = [];
   }
