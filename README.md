@@ -1,3 +1,5 @@
+<img src="site/public/landing/shibaarcade_logo.png" alt="Shiba Arcade Logo" width="500"/>
+
 # Shiba Arcade 
 
 **ハッククラブ：ゲームを作って、日本にアーケードを建てよう。**  

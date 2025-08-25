@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import GlobalGamesModal from '@/components/GlobalGamesModal';
 
 const PostAttachmentRenderer = dynamic(() => import('@/components/utils/PostAttachmentRenderer'), { ssr: false });
 const PlaytestTicket = dynamic(() => import('@/components/PlaytestTicket'), { ssr: false });
@@ -33,6 +34,7 @@ export default function GlobalGamesComponent({ token, playtestMode, setPlaytestM
   const [selectedView, setSelectedView] = useState('global'); // 'global' | 'playtests'
   const [playtestsFetched, setPlaytestsFetched] = useState(false);
   const circleRef = useRef(null);
+  const [selectedPost, setSelectedPost] = useState(null);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -40,12 +42,9 @@ export default function GlobalGamesComponent({ token, playtestMode, setPlaytestM
         const globalArea = document.querySelector('.global-area');
         if (globalArea) {
           const globalRect = globalArea.getBoundingClientRect();
-          
-          // Calculate position relative to the global area
           const x = e.clientX - globalRect.left;
           const y = e.clientY - globalRect.top;
-          
-          // Only show circle when mouse is within global area
+
           if (x >= 0 && x <= globalRect.width && y >= 0 && y <= globalRect.height) {
             circleRef.current.style.display = 'block';
             circleRef.current.style.left = `${x}px`;
@@ -74,6 +73,7 @@ export default function GlobalGamesComponent({ token, playtestMode, setPlaytestM
             ? data.map((p) => ({
                 createdAt: p['Created At'] || p.createdAt || '',
                 PlayLink: typeof p.PlayLink === 'string' ? p.PlayLink : '',
+                githubLink: typeof p.GitHub === 'string' ? p.GitHub : '',
                 attachments: Array.isArray(p.Attachements) ? p.Attachements : [],
                 slackId: p['slack id'] || '',
                 gameName: p['Game Name'] || '',
@@ -82,6 +82,8 @@ export default function GlobalGamesComponent({ token, playtestMode, setPlaytestM
                 gameThumbnail: p.GameThumbnail || '',
               }))
             : [];
+
+          // change to normalized
           setPosts(normalized);
           setHasMore(normalized.length >= 12);
         }
@@ -161,7 +163,7 @@ export default function GlobalGamesComponent({ token, playtestMode, setPlaytestM
       <div className="purple-circle" ref={circleRef}></div>
       
       <div style={{ width: 1000, maxWidth: '100%', margin: '0 auto', position: 'relative', zIndex: 10, paddingTop: 20, paddingBottom: 40 }}>
-      
+        
         {/* View Selector */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
           <div 
@@ -234,7 +236,9 @@ export default function GlobalGamesComponent({ token, playtestMode, setPlaytestM
                     borderRadius: 10,
                     background: 'rgba(255,255,255,0.8)',
                     padding: 12,
+                    cursor: 'pointer'
                   }}
+                  onClick={() => setSelectedPost(p)}
                 >
                   <PostAttachmentRenderer
                     content={p.content}
@@ -353,7 +357,13 @@ export default function GlobalGamesComponent({ token, playtestMode, setPlaytestM
         )}
       </div>
 
-      <style jsx>{`
+      <GlobalGamesModal
+        post={selectedPost}
+        token={token}
+        onClose={() => setSelectedPost(null)}
+      />
+
+      <style jsx> {`
         .global-area {
           position: relative;
           overflow: hidden;
@@ -387,5 +397,3 @@ export default function GlobalGamesComponent({ token, playtestMode, setPlaytestM
     </div>
   );
 }
-
-
