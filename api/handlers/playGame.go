@@ -19,6 +19,7 @@ func MainGamePlayHandler(srv *structs.Server) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
 
 		var filepath = "./games/" + gameId + "/index.html"
 
@@ -56,10 +57,11 @@ func AssetsPlayHandler(srv *structs.Server) http.HandlerFunc {
 		assetPath := chi.URLParam(r, "*")
 		if assetPath == "" {
 			var filepath = "./games/" + gameId + "/index.html"
-
+			w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
 			http.ServeFile(w, r, filepath)
 		} else {
 			var filepath = "./games/" + gameId + "/" + assetPath
+			w.Header().Set("Cross-Origin-Resource-Policy", "cross-origin")
 			http.ServeFile(w, r, filepath)
 		}
 	}
