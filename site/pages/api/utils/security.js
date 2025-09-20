@@ -107,3 +107,15 @@ export function sanitizeHtml(content) {
     .replace(/'/g, '&#x27;')
     .replace(/\//g, '&#x2F;');
 }
+
+/**
+ * Because we use Airtable rollup fields which use commas as delimiters (ew like seriously),
+ * we can't include commas in text fields included. To still allow people to include commas,
+ * we replace commas with a similar looking character, `‚` U+201A single low-9 quotation mark
+ * that Airtable won't mess with.
+ * @param {string} str 
+ * @returns 
+ */
+export function safeComma(str) {
+  return str.replace(/,/g, '‚');
+}

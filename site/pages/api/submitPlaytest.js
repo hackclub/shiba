@@ -1,5 +1,5 @@
 import Airtable from 'airtable';
-import { safeEscapeFormulaString } from './utils/security.js';
+import { safeComma, safeEscapeFormulaString } from './utils/security.js';
 
 const base = new Airtable({ apiKey: process.env.AIRTABLE_API_KEY }).base(process.env.AIRTABLE_BASE_ID);
 
@@ -9,7 +9,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { token, playtestId, funScore, artScore, creativityScore, audioScore, moodScore, feedback, playtimeSeconds } = req.body;
+    let { token, playtestId, funScore, artScore, creativityScore, audioScore, moodScore, feedback, playtimeSeconds } = req.body;
+    feedback = safeComma(feedback);
 
     if (!token || !playtestId) {
       return res.status(400).json({ error: 'Token and playtestId are required' });
