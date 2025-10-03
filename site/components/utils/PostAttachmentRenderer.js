@@ -11,6 +11,50 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
   const [editMinutes, setEditMinutes] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localTimeSpentOnAsset, setLocalTimeSpentOnAsset] = useState(timeSpentOnAsset);
+  const [showBadgeWheel, setShowBadgeWheel] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState(null);
+
+  const resolveBadgeSrc = (badgeName) => {
+    const mapping = {
+      'Speedy Shiba Shipper': '/SpeedyShibaShipper.png',
+      'Super Subtle Shiba': '/SuperSubtleShiba.png',
+      'Shomato': '/shomato.png',
+      'Shiba Showreel Submitter': '/ShibaShowreel.png',
+      'Stargazer': '/Stargazer.png',
+      'Shiba Pie': '/PieBadge.svg',
+      'Twin Shark': '/TwinShark.png',
+      'Akito Lover': '/AkitoLover.png',
+      'Shiba Sushi': '/ShibaSushi.png',
+      'Umbrella Badge': '/UmbrellaBadge.png',
+      'Shiba Fox': '/ShibaFox.png',
+      'ChefsCircle': '/ChefsCircle.png',
+      'House Of Mine': '/HouseOfMine.png',
+      'Bug Crusher': '/BugCrusher.png',
+      'Fist Of Fury': '/FistOfFurry.png',
+      'Be Cool': '/BeCool.png',
+      'Chaotic Dice': '/ChaoticDice.gif',
+      'Shiba Friendship': '/ShibaFriendship.png',
+      'CARRR': '/CARRR.png',
+      'Space Head': '/Space-Head.png',
+      'Gastly Badge': '/gastly.png',
+      'Shiba Axtro Ship': '/axtro.png',
+      'Speedy Shiba Racer': '/ShibaRacer.svg',
+      'Fish Keychain': '/fishGif.gif',
+      'Shiba Omelette': '/ShibaEgg.png',
+      'Shadow Merger': '/shadow.gif',
+      'Fatty Frog': '/fatFrog.gif',
+      'Shiba As Gundam': '/ShibaAsGundam.png',
+      'Shiba Radio': '/randomness.gif',
+      'Randomness': '/randomness.gif',
+      'Nature': '/tree.svg',
+      'Daydream': '/daydream.png'
+    };
+    if (mapping[badgeName]) return mapping[badgeName];
+    const compact = `/${String(badgeName || '').replace(/\s+/g, '')}.png`;
+    return compact;
+  };
+
+  const showInlineBadges = false;
   
   // Calculate timeSpentOnAsset from hoursSpent and minutesSpent if not provided
   const calculatedTimeSpentOnAsset = localTimeSpentOnAsset || (hoursSpent && minutesSpent ? hoursSpent + (minutesSpent / 60) : 0);
@@ -37,6 +81,21 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
     load();
     return () => { cancelled = true; };
   }, [slackId]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const id = 'shiba-badge-wheel-keyframes';
+    if (!document.getElementById(id)) {
+      const styleEl = document.createElement('style');
+      styleEl.id = id;
+      styleEl.textContent = `@keyframes shiba-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes shiba-spin-reverse { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }`;
+
+      document.head.appendChild(styleEl);
+    }
+    return () => {
+    };
+  }, []);
 
   // Check if this post belongs to the current user
   const isOwnPost = currentUserProfile && currentUserProfile.slackId && slackId && currentUserProfile.slackId === slackId;
@@ -176,9 +235,127 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
             }}
           />
           <div style={{ display: 'flex', flexDirection: 'column', overflow: 'visible' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 12, overflow: 'visible' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, overflow: 'visible' }}>
               <strong>{slackProfile?.displayName || slackId || 'User'}</strong>
-              {Array.isArray(badges) && badges.includes('Speedy Shiba Shipper') && (
+              {Array.isArray(badges) && badges.length > 0 && (
+                <button
+                  aria-label="Show badges"
+                  onClick={() => setShowBadgeWheel((v) => !v)}
+                  style={{
+                    appearance: 'none',
+                    border: '1px solid rgba(243, 0, 0, 0.95)',
+                    background: '#fff',
+                    borderRadius: 4,
+                    height: 20,
+                    padding: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    lineHeight: 1,
+                    paddingInline: 6,
+                  }}
+                  title={showBadgeWheel ? 'Hide badges' : 'Show badges'}
+                >
+                  Badges
+                </button>
+              )}
+
+              {showBadgeWheel && Array.isArray(badges) && badges.length > 0 && (() => {
+                const badgeCount = Math.min(badges.length, 20);
+                const circleSize = Math.max(160, 120 + (badgeCount * 4));
+                const radius = (circleSize / 2) - 20;
+                
+                return (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '140%',
+                      left: 0,
+                      width: circleSize,
+                      height: circleSize,
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle at center, #fff,rgb(255, 238, 253))',
+                      border: '1px solid rgba(255, 2, 2, 0.89)',
+                      boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
+                      zIndex: 20,
+                      overflow: 'visible',
+                      transformOrigin: '50% 50%',
+                      animation: 'shiba-spin 12s linear infinite',
+                    }}
+                  >
+                    {badges.slice(0, badgeCount).map((name, index) => {
+                      const angle = (index / badgeCount) * 360;
+                      const x = Math.cos((angle - 90) * Math.PI / 180) * radius;
+                      const y = Math.sin((angle - 90) * Math.PI / 180) * radius;
+                      
+                      return (
+                        <div
+                          key={`${name}-${index}`}
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+                            transition: 'transform 0.2s ease',
+                          }}
+                        >
+                          <img
+                            src={resolveBadgeSrc(name)}
+                            alt={name}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            onClick={() => setSelectedBadge(name)}
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 4,
+                              border: '1px solid rgba(0,0,0,0.15)',
+                              backgroundColor: '#fff',
+                              cursor: 'pointer',
+                              animation: 'shiba-spin-reverse 12s linear infinite',
+                            }}
+                            onMouseEnter={(e) => {
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) parent.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(1.1)`;
+                            }}
+                            onMouseLeave={(e) => {
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) parent.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(1)`;
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        fontSize: selectedBadge ? 8 : 10,
+                        color: '#ff7ad3',
+                        fontWeight: 600,
+                        background: '#fff',
+                        border: '1px solid rgba(0,0,0,0.2)',
+                        padding: selectedBadge ? '4px 8px' : '2px 6px',
+                        borderRadius: 6,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                        textAlign: 'center',
+                        maxWidth: circleSize * 0.6,
+                        wordWrap: 'break-word',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {selectedBadge || 'Badges'}
+                    </div>
+                  </div>
+                );
+              })()}
+              {false && Array.isArray(badges) && badges.includes('Speedy Shiba Shipper') && (
+                <div />
+              )}
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Speedy Shiba Shipper') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/SpeedyShibaShipper.png"
@@ -255,7 +432,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Super Subtle Shiba') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Super Subtle Shiba') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/SuperSubtleShiba.png"
@@ -332,7 +509,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shomato') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shomato') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/shomato.png"
@@ -409,7 +586,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shiba Showreel Submitter') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shiba Showreel Submitter') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/ShibaShowreel.png"
@@ -486,7 +663,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Stargazer') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Stargazer') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/Stargazer.png"
@@ -563,7 +740,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shiba Pie') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shiba Pie') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/PieBadge.svg"
@@ -640,7 +817,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Twin Shark') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Twin Shark') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/TwinShark.png"
@@ -717,7 +894,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Akito Lover') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Akito Lover') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/AkitoLover.png"
@@ -794,7 +971,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shiba Sushi') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shiba Sushi') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/ShibaSushi.png"
@@ -871,7 +1048,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Umbrella Badge') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Umbrella Badge') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/UmbrellaBadge.png"
@@ -948,7 +1125,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shiba Fox') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shiba Fox') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/ShibaFox.png"
@@ -1025,7 +1202,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('ChefsCircle') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('ChefsCircle') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/ChefsCircle.png"
@@ -1102,7 +1279,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('House Of Mine') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('House Of Mine') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/HouseOfMine.png"
@@ -1179,7 +1356,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Bug Crusher') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Bug Crusher') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/BugCrusher.png"
@@ -1256,7 +1433,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Fist Of Fury') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Fist Of Fury') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/FistOfFurry.png"
@@ -1333,7 +1510,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Be Cool') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Be Cool') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/BeCool.png"
@@ -1410,7 +1587,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Chaotic Dice') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Chaotic Dice') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/ChaoticDice.gif"
@@ -1487,7 +1664,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shiba Friendship') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shiba Friendship') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/ShibaFriendship.png"
@@ -1564,7 +1741,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('CARRR') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('CARRR') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/CARRR.png"
@@ -1641,7 +1818,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Space Head') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Space Head') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/Space-Head.png"
@@ -1718,7 +1895,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Gastly Badge') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Gastly Badge') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/gastly.png"
@@ -1795,7 +1972,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shiba Axtro Ship') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shiba Axtro Ship') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/axtro.png"
@@ -1872,7 +2049,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Speedy Shiba Racer') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Speedy Shiba Racer') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/ShibaRacer.svg"
@@ -1949,7 +2126,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Fish Keychain') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Fish Keychain') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/fishGif.gif"
@@ -2026,7 +2203,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shiba Omelette') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shiba Omelette') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/ShibaEgg.png"
@@ -2103,7 +2280,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shadow Merger') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shadow Merger') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/shadow.gif"
@@ -2180,7 +2357,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Fatty Frog') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Fatty Frog') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/fatFrog.gif"
@@ -2257,7 +2434,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shiba As Gundam') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shiba As Gundam') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/ShibaAsGundam.png"
@@ -2334,7 +2511,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Shiba Radio') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Shiba Radio') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/Note_Block_animate.gif"
@@ -2412,7 +2589,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Randomness') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Randomness') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/randomness.gif"
@@ -2490,7 +2667,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Nature') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Nature') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/tree.svg"
@@ -2568,7 +2745,7 @@ export default function PostAttachmentRenderer({ content, attachments, playLink,
                   </div>
                 </div>
               )}
-              {Array.isArray(badges) && badges.includes('Daydream') && (
+              {showInlineBadges && Array.isArray(badges) && badges.includes('Daydream') && (
                 <div style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src="/daydream.png"
