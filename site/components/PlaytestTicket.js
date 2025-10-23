@@ -192,54 +192,17 @@ export default function PlaytestTicket({ playtest, onPlaytestClick }) {
               </div>
             )}
 
-            {playtest.status !== 'Complete'
-              ? (!playtest.ownerSlackId
-                ? (
-                  <div style={{
-                    fontSize: 14,
-                    color: '#ff0000ff',
-                    fontWeight: 500
-                  }}>
-                      Posts will not load!
-                  </div>
-                )
-                : (
-                  <div style={{
-                    fontSize: 14,
-                    color: '#329939ff',
-                    fontWeight: 500
-                  }}>
-                      Posts should load!
-                  </div>
-                )
-              )
-              : null
-            }
-
-            {playtest.status !== 'Complete'
-              ? (
-                !playtest.gameLink
-                ? (
-                  <div style={{
-                    fontSize: 14,
-                    color: '#ff0000ff',
-                    fontWeight: 500
-                  }}>
-                      Game will not show!
-                  </div>
-                )
-                : (
-                  <div style={{
-                    fontSize: 14,
-                    color: '#329939ff',
-                    fontWeight: 500
-                  }}>
-                      Game should show!
-                  </div>
-                )
-              )
-              : null
-            }
+            {/* Indicators about data availability */}
+            {/* {playtest.status !== 'Complete' && (
+              <>
+                <div style={{ fontSize: 14, color: playtest.ownerSlackId ? '#329939ff' : '#ff0000ff', fontWeight: 500 }}>
+                  Posts {playtest.ownerSlackId ? 'should' : 'will not'} load!
+                </div>
+                <div style={{ fontSize: 14, color: playtest.gameLink ? '#329939ff' : '#ff0000ff', fontWeight: 500 }}>
+                  Game {playtest.gameLink ? 'should' : 'will not'} show!
+                </div>
+              </>
+            )} */}
 
             {/* <span style={{ fontSize: 12, opacity: 0.7, color: '#000' }}>
               ID: {playtest.playtestId}
