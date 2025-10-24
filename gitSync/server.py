@@ -5,6 +5,7 @@ import signal
 import sys
 import atexit
 import psutil
+import json
 from datetime import datetime
 from flask import Flask, jsonify
 from dotenv import load_dotenv
@@ -16,6 +17,10 @@ from main import (
     analyze_repo_for_posts,
     update_post_git_changes,
     cleanup_git_processes,
+    aggressive_cleanup_git_processes,
+    nuclear_cleanup_git_processes,
+    docker_nuclear_cleanup,
+    ultra_aggressive_cleanup,
     AIRTABLE_API_KEY,
     AIRTABLE_BASE_ID
 )
@@ -31,6 +36,49 @@ last_sync_time = None
 last_sync_result = None
 sync_error = None
 sync_count = 0
+
+PID_FILE = 'gitSync.pid'
+
+
+
+
+def check_existing_process():
+    """Check if another instance is already running."""
+    try:
+        if os.path.exists(PID_FILE):
+            with open(PID_FILE, 'r') as f:
+                pid = int(f.read().strip())
+            
+            # Check if process is still running
+            try:
+                os.kill(pid, 0)  # This will raise an exception if process doesn't exist
+                print(f"Another gitSync instance is already running (PID: {pid})")
+                print("Exiting to prevent conflicts...")
+                sys.exit(1)
+            except (OSError, ProcessLookupError):
+                # Process doesn't exist, remove stale PID file
+                os.remove(PID_FILE)
+                print("Removed stale PID file")
+    except Exception as e:
+        print(f"Warning: Could not check existing process: {e}")
+
+
+def save_pid():
+    """Save current process ID."""
+    try:
+        with open(PID_FILE, 'w') as f:
+            f.write(str(os.getpid()))
+    except Exception as e:
+        print(f"Warning: Could not save PID: {e}")
+
+
+def cleanup_pid():
+    """Remove PID file on exit."""
+    try:
+        if os.path.exists(PID_FILE):
+            os.remove(PID_FILE)
+    except Exception as e:
+        print(f"Warning: Could not remove PID file: {e}")
 
 
 def cleanup_all_zombies():
@@ -118,6 +166,9 @@ def perform_full_sync():
         print(f"Repository {i}/{len(grouped_data)}: {repo['github_url']}")
         print(f"  Posts: {len(repo['posts'])}")
         
+        # Clean up zombies before processing each repository
+        cleanup_git_processes()
+        
         try:
             # Analyze repo and get git changes
             repo['posts'] = analyze_repo_for_posts(repo['github_url'], repo['posts'])
@@ -131,8 +182,14 @@ def perform_full_sync():
             
             repos_processed += 1
             
+            # Ultra aggressive cleanup after each repository to prevent accumulation
+            print(f"  Ultra aggressive cleanup after repo {i}...")
+            ultra_aggressive_cleanup()
+            
         except Exception as e:
             print(f"  Error processing repo: {e}")
+            # Still clean up zombies even on error
+            ultra_aggressive_cleanup()
             continue
     
     result = {
@@ -148,13 +205,16 @@ def perform_full_sync():
     print(f"{'='*80}\n")
     
     # Clean up any hanging git processes after sync
-    cleanup_all_zombies()
+    print("  Final ultra aggressive cleanup after full sync...")
+    ultra_aggressive_cleanup()
     
     return result
 
 
-def run_single_sync_and_restart():
-    """Run a single sync cycle and then restart the server."""
+
+
+def run_full_sync_and_restart():
+    """Run a full sync of all repositories and then restart the server."""
     global is_sync_running, last_sync_time, last_sync_result, sync_error, sync_count
     
     is_sync_running = True
@@ -162,7 +222,7 @@ def run_single_sync_and_restart():
     
     try:
         print(f"\n{'='*80}")
-        print(f"Starting sync #{sync_count} at {datetime.now().isoformat()}")
+        print(f"Starting full sync #{sync_count} at {datetime.now().isoformat()}")
         print(f"{'='*80}\n")
         
         result = perform_full_sync()
@@ -171,14 +231,14 @@ def run_single_sync_and_restart():
         sync_error = None
         
         print(f"\n{'='*80}")
-        print(f"Sync #{sync_count} completed successfully!")
-        print(f"Waiting 60 seconds before restart to prevent zombie accumulation...")
+        print(f"Full sync #{sync_count} completed successfully!")
+        print(f"Restarting to prevent zombie accumulation...")
         print(f"{'='*80}\n")
         
         # Clean up before restart
         cleanup_all_zombies()
         
-        # Wait before restart to prevent rapid cycling
+        # Wait to ensure cleanup completes
         time.sleep(60)
         
         print(f"Restarting server...")
@@ -187,13 +247,13 @@ def run_single_sync_and_restart():
         
     except Exception as error:
         sync_error = str(error)
-        print(f"❌ Sync #{sync_count} failed: {error}")
-        print(f"Waiting 30 seconds before restart to prevent zombie accumulation...")
+        print(f"❌ Full sync #{sync_count} failed: {error}")
+        print(f"Restarting to prevent zombie accumulation...")
         
         # Clean up before restart even on error
         cleanup_all_zombies()
         
-        # Wait before restart to prevent rapid cycling
+        # Wait to ensure cleanup completes
         time.sleep(30)
         
         print(f"Restarting server...")
@@ -264,6 +324,9 @@ def root():
 
 
 if __name__ == '__main__':
+    # Check for existing process
+    check_existing_process()
+    
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
@@ -275,20 +338,40 @@ if __name__ == '__main__':
     
     # Register cleanup on exit
     atexit.register(cleanup_all_zombies)
+    atexit.register(cleanup_pid)
     
-    # Start single sync cycle in background thread (will restart after completion)
-    sync_thread = threading.Thread(target=run_single_sync_and_restart, daemon=True)
-    sync_thread.start()
+    # Save current PID
+    save_pid()
     
     print(f"Starting gitSync server on port {PORT}")
-    print(f"Single sync cycle enabled (will restart after completion)")
+    print(f"Full sync enabled (will restart after completing all repositories)")
     print(f"Signal handlers registered for graceful shutdown")
     
     # Initial cleanup
     cleanup_all_zombies()
     
-    # Start Flask server
-    app.run(host='0.0.0.0', port=PORT)
+    # Start Flask server first
+    print("Starting Flask server...")
+    flask_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=PORT), daemon=True)
+    flask_thread.start()
+    
+    # Wait a moment for Flask to start
+    time.sleep(3)
+    
+    # Start full sync cycle in background thread (will restart after full sync)
+    print("Starting sync thread...")
+    sync_thread = threading.Thread(target=run_full_sync_and_restart, daemon=True)
+    sync_thread.start()
+    
+    # Keep main thread alive
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+        cleanup_all_zombies()
+        cleanup_pid()
+        sys.exit(0)
 
 
 
