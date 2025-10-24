@@ -47,15 +47,114 @@ func MainGamePlayHandler() http.HandlerFunc {
 			return
 		}
 
-		// Set correct content type for HTML
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "public, max-age=3600")
-		w.WriteHeader(http.StatusOK)
+	// Read the HTML content
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Failed to read response body: %v", err)
+		http.Error(w, "Failed to read game", http.StatusInternalServerError)
+		return
+	}
+
+	// Inject virtual keyboard listener script
+	virtualKeyboardScript := `
+<script>
+// Virtual keyboard listener for mobile WASD controls
+(function() {
+	const activeKeys = new Set();
+	
+	// Key code mappings
+	const keyCodes = {
+		'w': 87,
+		'a': 65,
+		's': 83,
+		'd': 68
+	};
+	
+	console.log('[Virtual Keyboard] Listener initialized');
+	
+	window.addEventListener('message', function(event) {
+		console.log('[Virtual Keyboard] Message received:', event.data);
 		
-		// Copy response body
-		if _, err := io.Copy(w, resp.Body); err != nil {
-			log.Printf("Failed to copy response body: %v", err)
+		if (!event.data || !event.data.type || !event.data.key) {
+			console.log('[Virtual Keyboard] Invalid message data');
+			return;
 		}
+		
+		const eventType = event.data.type; // 'keydown' or 'keyup'
+		const key = event.data.key.toLowerCase();
+		const keyCode = keyCodes[key] || key.charCodeAt(0);
+		
+		console.log('[Virtual Keyboard] Processing:', eventType, key, keyCode);
+		
+		// Prevent duplicate keydown events
+		if (eventType === 'keydown') {
+			if (activeKeys.has(key)) {
+				console.log('[Virtual Keyboard] Key already active:', key);
+				return;
+			}
+			activeKeys.add(key);
+		} else if (eventType === 'keyup') {
+			activeKeys.delete(key);
+		}
+		
+		// Create and dispatch keyboard event with multiple property formats
+		const keyboardEvent = new KeyboardEvent(eventType, {
+			key: key,
+			code: 'Key' + key.toUpperCase(),
+			keyCode: keyCode,
+			which: keyCode,
+			charCode: keyCode,
+			bubbles: true,
+			cancelable: true,
+			composed: true
+		});
+		
+		console.log('[Virtual Keyboard] Dispatching event:', keyboardEvent);
+		
+		// Dispatch to multiple targets
+		document.dispatchEvent(keyboardEvent);
+		window.dispatchEvent(keyboardEvent);
+		document.body?.dispatchEvent(keyboardEvent);
+		
+		// Also try dispatching to canvas if it exists (common in games)
+		const canvas = document.querySelector('canvas');
+		if (canvas) {
+			canvas.dispatchEvent(keyboardEvent);
+			console.log('[Virtual Keyboard] Dispatched to canvas');
+		}
+		
+		// Try dispatching to the active element
+		if (document.activeElement && document.activeElement !== document.body) {
+			document.activeElement.dispatchEvent(keyboardEvent);
+			console.log('[Virtual Keyboard] Dispatched to active element:', document.activeElement);
+		}
+	});
+	
+	console.log('[Virtual Keyboard] Ready to receive messages');
+})();
+</script>
+`
+
+	// Inject before closing </body> or </html> tag
+	htmlContent := string(bodyBytes)
+	if strings.Contains(htmlContent, "</body>") {
+		htmlContent = strings.Replace(htmlContent, "</body>", virtualKeyboardScript+"</body>", 1)
+	} else if strings.Contains(htmlContent, "</html>") {
+		htmlContent = strings.Replace(htmlContent, "</html>", virtualKeyboardScript+"</html>", 1)
+	} else {
+		// If neither tag found, append at the end
+		htmlContent += virtualKeyboardScript
+	}
+
+	// Set correct content type for HTML
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.WriteHeader(http.StatusOK)
+	
+	// Write modified HTML
+	if _, err := w.Write([]byte(htmlContent)); err != nil {
+		log.Printf("Failed to write response body: %v", err)
+	}
 	}
 }
 
@@ -139,13 +238,115 @@ func AssetsPlayHandler() http.HandlerFunc {
 			}
 		}
 
-		w.Header().Set("Content-Type", contentType)
-		w.Header().Set("Cache-Control", "public, max-age=3600")
-		w.WriteHeader(http.StatusOK)
+	// Read response body
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Failed to read asset response body: %v", err)
+		http.Error(w, "Failed to read asset", http.StatusInternalServerError)
+		return
+	}
+
+	// If it's HTML, inject the virtual keyboard script
+	if isIndexHTML || strings.Contains(contentType, "text/html") {
+		virtualKeyboardScript := `
+<script>
+// Virtual keyboard listener for mobile WASD controls
+(function() {
+	const activeKeys = new Set();
+	
+	// Key code mappings
+	const keyCodes = {
+		'w': 87,
+		'a': 65,
+		's': 83,
+		'd': 68
+	};
+	
+	console.log('[Virtual Keyboard] Listener initialized');
+	
+	window.addEventListener('message', function(event) {
+		console.log('[Virtual Keyboard] Message received:', event.data);
 		
-		// Copy response body
-		if _, err := io.Copy(w, resp.Body); err != nil {
-			log.Printf("Failed to copy asset response: %v", err)
+		if (!event.data || !event.data.type || !event.data.key) {
+			console.log('[Virtual Keyboard] Invalid message data');
+			return;
 		}
+		
+		const eventType = event.data.type; // 'keydown' or 'keyup'
+		const key = event.data.key.toLowerCase();
+		const keyCode = keyCodes[key] || key.charCodeAt(0);
+		
+		console.log('[Virtual Keyboard] Processing:', eventType, key, keyCode);
+		
+		// Prevent duplicate keydown events
+		if (eventType === 'keydown') {
+			if (activeKeys.has(key)) {
+				console.log('[Virtual Keyboard] Key already active:', key);
+				return;
+			}
+			activeKeys.add(key);
+		} else if (eventType === 'keyup') {
+			activeKeys.delete(key);
+		}
+		
+		// Create and dispatch keyboard event with multiple property formats
+		const keyboardEvent = new KeyboardEvent(eventType, {
+			key: key,
+			code: 'Key' + key.toUpperCase(),
+			keyCode: keyCode,
+			which: keyCode,
+			charCode: keyCode,
+			bubbles: true,
+			cancelable: true,
+			composed: true
+		});
+		
+		console.log('[Virtual Keyboard] Dispatching event:', keyboardEvent);
+		
+		// Dispatch to multiple targets
+		document.dispatchEvent(keyboardEvent);
+		window.dispatchEvent(keyboardEvent);
+		document.body?.dispatchEvent(keyboardEvent);
+		
+		// Also try dispatching to canvas if it exists (common in games)
+		const canvas = document.querySelector('canvas');
+		if (canvas) {
+			canvas.dispatchEvent(keyboardEvent);
+			console.log('[Virtual Keyboard] Dispatched to canvas');
+		}
+		
+		// Try dispatching to the active element
+		if (document.activeElement && document.activeElement !== document.body) {
+			document.activeElement.dispatchEvent(keyboardEvent);
+			console.log('[Virtual Keyboard] Dispatched to active element:', document.activeElement);
+		}
+	});
+	
+	console.log('[Virtual Keyboard] Ready to receive messages');
+})();
+</script>
+`
+
+		// Inject before closing </body> or </html> tag
+		htmlContent := string(bodyBytes)
+		if strings.Contains(htmlContent, "</body>") {
+			htmlContent = strings.Replace(htmlContent, "</body>", virtualKeyboardScript+"</body>", 1)
+		} else if strings.Contains(htmlContent, "</html>") {
+			htmlContent = strings.Replace(htmlContent, "</html>", virtualKeyboardScript+"</html>", 1)
+		} else {
+			// If neither tag found, append at the end
+			htmlContent += virtualKeyboardScript
+		}
+		bodyBytes = []byte(htmlContent)
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.WriteHeader(http.StatusOK)
+	
+	// Write response body
+	if _, err := w.Write(bodyBytes); err != nil {
+		log.Printf("Failed to write asset response: %v", err)
+	}
 	}
 }
