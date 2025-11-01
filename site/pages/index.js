@@ -89,7 +89,7 @@ export default function Home({ games: prefetchedGames, gamesError }) {
   // Handle other URL query parameters
   useEffect(() => {
     if (router.isReady) {
-      const { openProfile, "3d": threeD } = router.query;
+      const { openProfile, "3d": threeD, arcade } = router.query;
       
       if (openProfile === "true") {
         setAutoOpenProfile(true);
@@ -99,6 +99,12 @@ export default function Home({ games: prefetchedGames, gamesError }) {
       
       if (threeD === "true") {
         setShow3D(true);
+        // Clean up the URL without triggering a page reload
+        router.replace("/", undefined, { shallow: true });
+      }
+      
+      if (arcade === "true" || arcade === "") {
+        setShowEventSite(true);
         // Clean up the URL without triggering a page reload
         router.replace("/", undefined, { shallow: true });
       }
