@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
     "luxon": "^3.7.2",
     "next": "16.0.10",
     "react": "^19.2.3",
@@ -18,8 +19,11 @@
     "@types/luxon": "^3.7.1",
     "@types/node": "25.0.1",
     "@types/react": "19.2.7",
+    "autoprefixer": "^10.4.22",
     "eslint": "^9.39.1",
-    "eslint-config-next": "16.0.10"
+    "eslint-config-next": "16.0.10",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18"
   },
   "packageManager": "pnpm@10.25.0+sha512.5e82639027af37cf832061bcc6d639c219634488e0f2baebe785028a793de7b525ffcd3f7ff574f5e9860654e098fe852ba8ac5dd5cefe1767d23a020a92f501"
 }
