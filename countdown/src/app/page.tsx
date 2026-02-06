@@ -31,10 +31,10 @@ export default function CountdownPage() {
         .toObject();
 
       setTimeLeft({
-        days: Math.floor(diff.days),
-        hours: Math.floor(diff.hours),
-        minutes: Math.floor(diff.minutes),
-        seconds: Math.floor(diff.seconds),
+        days: Math.floor(diff.days ?? 0),
+        hours: Math.floor(diff.hours ?? 0),
+        minutes: Math.floor(diff.minutes ?? 0),
+        seconds: Math.floor(diff.seconds ?? 0),
       });
     };
 

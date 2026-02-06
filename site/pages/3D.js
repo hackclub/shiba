@@ -793,7 +793,7 @@ export default function ThreeDPage({ games: prefetchedGames = [], gamesError = n
                     overlay.style.backgroundColor = 'transparent'; // Remove black background
                     
                     // Import and render PlayGameComponent
-                    import('/components/utils/playGameComponent.js').then(({ default: PlayGameComponent }) => {
+                    import('../components/utils/playGameComponent.js').then(({ default: PlayGameComponent }) => {
                       const container = document.getElementById('play-game-container');
                       if (container) {
                         // Create React root and render component
