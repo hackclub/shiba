@@ -1255,8 +1255,9 @@ export default function SocialStartScreen({ games: initialGames = [], gamesError
         {/* Tokyo Arcade Banner */}
         <div 
           onClick={() => {
-            // If user is logged in, do nothing. If not logged in, show StartScreen like the old behavior
-            if (!token) {
+            if (token) {
+              onEnterArcade?.();
+            } else {
               onLoginClick();
             }
             logSpecificActivity('tokyo_arcade_banner_click', {
