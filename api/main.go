@@ -8,7 +8,6 @@ import (
 	"os"
 	"shiba-api/api"
 	"shiba-api/structs"
-	"shiba-api/sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -96,21 +95,6 @@ func main() {
 		log.Fatal("Failed to get Airtable base table")
 	}
 	log.Println("Adding the airtable base...")
-
-	go func() {
-		ticker := time.NewTicker(10 * time.Minute) // interval
-		defer ticker.Stop()
-
-		for {
-			log.Println("Starting background R2 sync...")
-			if err := sync.SyncFromR2(*srv); err != nil {
-				log.Printf("R2 sync error: %v", err)
-			} else {
-				log.Println("R2 sync completed successfully")
-			}
-			<-ticker.C
-		}
-	}()
 
 	r := chi.NewRouter()
 

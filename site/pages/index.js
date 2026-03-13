@@ -11,6 +11,7 @@ import HelpComponent from "@/components/HelpComponent";
 import TopBar from "@/components/TopBar";
 import PlaytestMode from "@/components/PlaytestMode";
 import useAudioManager from "@/components/useAudioManager";
+import ThreeDPage from "@/pages/3D";
 
 export default function Home({ games: prefetchedGames, gamesError }) {
   const router = useRouter();
@@ -61,6 +62,7 @@ export default function Home({ games: prefetchedGames, gamesError }) {
   const [autoOpenProfile, setAutoOpenProfile] = useState(false);
   const [playtestMode, setPlaytestMode] = useState(false);
   const [selectedPlaytestGame, setSelectedPlaytestGame] = useState(null);
+  const [show3D, setShow3D] = useState(false);
 
   // Audio manager for sound effects
   const { play: playSound, stopAll } = useAudioManager(["next.mp3", "prev.mp3", "Dream.mp3"]);
@@ -87,10 +89,22 @@ export default function Home({ games: prefetchedGames, gamesError }) {
   // Handle other URL query parameters
   useEffect(() => {
     if (router.isReady) {
-      const { openProfile } = router.query;
+      const { openProfile, "3d": threeD, arcade } = router.query;
       
       if (openProfile === "true") {
         setAutoOpenProfile(true);
+        // Clean up the URL without triggering a page reload
+        router.replace("/", undefined, { shallow: true });
+      }
+      
+      if (threeD === "true") {
+        setShow3D(true);
+        // Clean up the URL without triggering a page reload
+        router.replace("/", undefined, { shallow: true });
+      }
+      
+      if (arcade === "true" || arcade === "") {
+        setShowEventSite(true);
         // Clean up the URL without triggering a page reload
         router.replace("/", undefined, { shallow: true });
       }
@@ -198,6 +212,11 @@ export default function Home({ games: prefetchedGames, gamesError }) {
       return { ok: false, message: "Network error" };
     }
   };
+
+  // Show 3D mode if ?3d=true
+  if (show3D) {
+    return <ThreeDPage games={prefetchedGames} gamesError={gamesError} />;
+  }
 
   // Show SocialStartScreen by default unless user wants to enter logged-in view
   if (!showLoggedInView) {
