@@ -32,3 +32,5 @@ out/
 ./wiki/tmp/
 ./wiki/sitemap*
 ./wiki/robots.txt
+.vercel
+.env*.local
