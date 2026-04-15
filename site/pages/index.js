@@ -52,7 +52,7 @@ export default function Home({ games: prefetchedGames, gamesError }) {
 
   const [token, setToken] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [showEventSite, setShowEventSite] = useState(false);
+  const [showEventSite, setShowEventSite] = useState(true);
   const [showLoggedInView, setShowLoggedInView] = useState(false);
   const [slackCode, setSlackCode] = useState(null);
 

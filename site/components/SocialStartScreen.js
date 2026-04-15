@@ -1755,6 +1755,24 @@ export default function SocialStartScreen({ games: initialGames = [], gamesError
                     {gamesError}
                   </p>
                 ) : (
+                  <>
+                  <div
+                    style={{
+                      textAlign: "center",
+                      marginTop: "20px",
+                      width: "100%",
+                      padding: "12px 16px",
+                      borderRadius: "8px",
+                      backgroundColor: "rgba(245, 153, 75, 0.15)",
+                      border: "1px solid rgba(245, 153, 75, 0.4)",
+                      color: theme.text,
+                    }}
+                  >
+                    The games are currently broken, but you can see more about Shiba {" "}
+                    <a href="https://www.youtube.com/watch?v=kkbf092Los0" style={{ color: theme.accent, fontWeight: "bold" }}>
+                      in this video
+                    </a>
+                  </div>
                   <div
                     className="games-grid"
                     style={{
@@ -2160,6 +2178,7 @@ export default function SocialStartScreen({ games: initialGames = [], gamesError
                       </div>
                     )}
                   </div>
+                  </>
                 )}
               </>
             )}
