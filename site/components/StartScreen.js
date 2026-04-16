@@ -175,9 +175,8 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp, onBackToS
               alignItems: "center",
               justifyContent: "center",
               padding: "10px",
-              backgroundColor: "rgba(255, 255, 255, 0.1)",
-              border: "1px solid rgba(255, 255, 255, 0.3)",
             }}
+            className="slack-logo"
             onClick={onBackToSocial}
           >
             <p
@@ -188,7 +187,7 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp, onBackToS
                 margin: 0,
               }}
             >
-              ← Back
+              ← Games made at Shiba
             </p>
           </div>
         </div>
@@ -269,6 +268,51 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp, onBackToS
           <p className="top-text english black-outline">
             HACK CLUB: make a game, build an arcade in japan.
           </p>
+          <div
+            style={{
+              marginTop: "64px",
+              marginBottom: "20px",
+              padding: "18px 24px",
+              borderRadius: "14px",
+              width: "100%",
+              maxWidth: "860px",
+              backgroundColor: "rgba(216, 105, 9, 0.35)",
+              border: "3px solid rgba(255, 214, 160, 0.95)",
+              color: "white",
+              fontWeight: "700",
+              fontSize: "1.5rem",
+              lineHeight: "1.4",
+              textAlign: "center",
+              boxShadow: "0 14px 28px rgba(0, 0, 0, 0.38)",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            This event has ended, see more Hack Club events{" "}
+            <a
+              href="https://hackclub.com/"
+              style={{
+                color: "#fff2da",
+                textDecoration: "underline",
+                textDecorationThickness: "2px",
+                fontWeight: "800",
+              }}
+            >
+              here
+            </a>
+            <br />
+              Join the Hack Club Slack to join the community {" "}
+              <a
+              href="https://slack.hackclub.com/"
+              style={{
+                color: "#fff2da",
+                textDecoration: "underline",
+                textDecorationThickness: "2px",
+                fontWeight: "800",
+              }}
+            >
+              here {" "}
+            </a>
+          </div>
           <img
             src="/landing/shibaarcade_logo.png"
             className="logo"
@@ -287,58 +331,6 @@ export default function StartScreen({ setToken, requestOtp, verifyOtp, onBackToS
             allowFullScreen
             credentialless
           ></iframe>
-
-          <div
-            className="email-input"
-            style={{
-              marginTop: "-20px",
-            }}
-          >
-            {stage === "email" ? (
-              <>
-                <input
-                  ref={emailInputRef}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="orpheus@hackclub.com"
-                  onKeyDown={(e) => {
-                    // console.log("Key pressed:", e.key);
-                    if (e.key === "Enter") {
-                      // console.log("Enter key pressed, calling onRequest");
-                      onRequest();
-                    }
-                  }}
-                />
-                <button
-                  onClick={onRequest}
-                  disabled={loading}
-                  className="signup-button"
-                >
-                  {loading ? "Sending..." : "join the jam"}
-                </button>
-              </>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="Enter 6-digit code (email)"
-                  inputMode="numeric"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      onVerify();
-                    }
-                  }}
-                  maxLength={6}
-                />
-                <button onClick={onVerify} disabled={loading}>
-                  {loading ? "verifying..." : "verify"}
-                </button>
-              </>
-            )}
-          </div>
         </div>
       </div>
 
