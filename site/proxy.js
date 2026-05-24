@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 
-export function middleware(request) {
+export function proxy(request) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next()
   
-  // Apply security headers to API routes (moved from pages/api/_middleware.js)
+  // Apply security headers to API routes (moved from pages/api/_proxy.js)
   if (pathname.startsWith('/api/')) {
     response.headers.set('X-Content-Type-Options', 'nosniff')
     response.headers.set('X-Frame-Options', 'DENY')
