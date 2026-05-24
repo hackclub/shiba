@@ -1,4 +1,4 @@
-import { safeEscapeFormulaString } from './utils/security.js';
+import { safeComma, safeEscapeFormulaString } from './utils/security.js';
 
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || 'appg245A41MWc6Rej';
@@ -16,7 +16,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ message: 'Server configuration error' });
   }
 
-  const { token, feedbackText, response, responseMessage } = req.body || {};
+  let { token, feedbackText, response, responseMessage } = req.body || {};
+  responseMessage = safeComma(responseMessage);
   
   if (!token || !feedbackText) {
     return res.status(400).json({ message: 'Missing required fields: token, feedbackText' });

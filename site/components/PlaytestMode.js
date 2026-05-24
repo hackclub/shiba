@@ -747,14 +747,7 @@ export default function PlaytestMode({ onExit, profile, playtestGame, playSound,
                   
                   <textarea
                     value={ratingFeedback[category]}
-                    onChange={(e) => {
-                      // Remove commas from the input
-                      const value = e.target.value.replace(/,/g, '');
-                      setRatingFeedback(prev => ({
-                        ...prev,
-                        [category]: value
-                      }));
-                    }}
+                    onChange={(e) => setRatingFeedback(prev => ({ ...prev, [category]: e.target.value }))}
                     placeholder={`How can they improve ${category}? Please be as specific as you can...`}
                     required
                     style={{
@@ -1240,11 +1233,7 @@ export default function PlaytestMode({ onExit, profile, playtestGame, playSound,
             
             <textarea
               value={additionalFeedback}
-              onChange={(e) => {
-                // Remove commas from the input
-                const value = e.target.value.replace(/,/g, '');
-                setAdditionalFeedback(value);
-              }}
+              onChange={(e) => setAdditionalFeedback(e.target.value)}
               placeholder="Share any additional thoughts about the game..."
               style={{
                 width: "100%",
