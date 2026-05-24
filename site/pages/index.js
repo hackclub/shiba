@@ -372,7 +372,19 @@ export async function getStaticProps() {
       throw new Error('Failed to fetch games');
     }
 
-    const games = await response.json();
+    // Idk if the API can return nullish values but I wouldn't be surprised... just in case
+    const games = (await response.json()).filter(game => !!game).map(game => ({
+      // holy inconsistent capitalization
+      id: game.id,
+      name: game.name,
+      description: game.description,
+      thumbnailUrl: game.thumbnailUrl,
+      playableURL: game.playableURL,
+      slackId: game.slackId,
+      ShibaLink: game.ShibaLink,
+      creatorDisplayName: game.creatorDisplayName,
+      creatorImage: game.creatorImage
+    }));
 
     return {
       props: {
