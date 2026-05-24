@@ -9,21 +9,21 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
+    "@tailwindcss/postcss": "^4.3.0",
     "luxon": "^3.7.2",
     "next": "16.1.7",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@types/luxon": "^3.7.1",
     "@types/node": "25.0.1",
     "@types/react": "19.2.7",
-    "autoprefixer": "^10.4.22",
-    "eslint": "^9.39.1",
+    "autoprefixer": "^10.5.0",
+    "eslint": "^9.39.4",
     "eslint-config-next": "16.0.10",
-    "postcss": "^8.5.10",
-    "tailwindcss": "^4.1.18"
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0"
   },
-  "packageManager": "pnpm@10.25.0+sha512.5e82639027af37cf832061bcc6d639c219634488e0f2baebe785028a793de7b525ffcd3f7ff574f5e9860654e098fe852ba8ac5dd5cefe1767d23a020a92f501"
+  "packageManager": "pnpm@11.3.0+sha512.2c403d6594527287672b1f7056343a1f7c3634036a67ffabfcc2b3d7595d843768f8787148d1b57cf7956c90606bbd192857c363af19e96d2d0ec9ec5741d215"
 }
